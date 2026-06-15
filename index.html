@@ -663,9 +663,15 @@ function adminUsuarios(){
       const inv=pr.inventory||{},packs=pr.packs||[],pasted=pr.pasted||{};
       const q=Object.values(inv).reduce((a,b)=>a+b,0);
       const it=el(`<div class="adm-item"><div class="thumb">👤</div><div class="meta"><div class="t">${pr.username||"(sin nombre)"} ${pr.is_admin?'· ADMIN':''}</div><div class="s">${q} sueltas · ${packs.length} sobres · ${Object.keys(pasted).length} pegadas</div></div><button class="btn gold sm give">+ Sobre</button><button class="btn ghost sm adm">${pr.is_admin?'Quitar admin':'Hacer admin'}</button><button class="btn ghost sm rst">Reset</button><button class="btn danger sm del">✕</button></div>`);
-      it.querySelector(".give").onclick=async()=>{const np=packs.concat(["PA"+Date.now()]);await sb.from("profiles").update({packs:np}).eq("id",pr.id);toast("Sobre dado");render();};
-      it.querySelector(".adm").onclick=async()=>{await sb.from("profiles").update({is_admin:!pr.is_admin}).eq("id",pr.id);toast("Permisos actualizados");render();};
-      it.querySelector(".rst").onclick=async()=>{if(!confirm("¿Borrar progreso de "+pr.username+"?"))return;await sb.from("profiles").update({inventory:{},pasted:{},packs:[],codes_used:[],last_daily:0}).eq("id",pr.id);render();};
+      it.querySelector(".give").onclick=async()=>{const np=packs.concat(["PA"+Date.now()]);await sb.from("profiles").update({packs:np}).eq("id",pr.id);
+        if(SESSION&&pr.id===SESSION.user.id){clearTimeout(saveTimer);G.users[CUR].packs=np;}
+        toast("Sobre dado");render();};
+      it.querySelector(".adm").onclick=async()=>{await sb.from("profiles").update({is_admin:!pr.is_admin}).eq("id",pr.id);
+        if(SESSION&&pr.id===SESSION.user.id){isAdmin=!pr.is_admin;}
+        toast("Permisos actualizados");render();};
+      it.querySelector(".rst").onclick=async()=>{if(!confirm("¿Borrar progreso de "+pr.username+"?"))return;await sb.from("profiles").update({inventory:{},pasted:{},packs:[],codes_used:[],last_daily:0}).eq("id",pr.id);
+        if(SESSION&&pr.id===SESSION.user.id){clearTimeout(saveTimer);G.users[CUR].inventory={};G.users[CUR].pasted={};G.users[CUR].packs=[];G.users[CUR].codesUsed=[];G.users[CUR].lastDaily=0;}
+        toast("Progreso reiniciado");render();};
       it.querySelector(".del").onclick=async()=>{if(!confirm("¿Eliminar perfil de "+pr.username+"?"))return;await sb.from("profiles").delete().eq("id",pr.id);render();};
       box.appendChild(it);
     });
