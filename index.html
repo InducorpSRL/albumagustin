@@ -695,7 +695,7 @@ const DEFAULT_CONFIG={title:"COPA",titleAccent:"DIGITAL",homeSub:"Tu álbum. Tus
 // --- cargar todo el contenido global desde la base ---
 async function loadGlobal(){
   const [cfg,st,tm,cd,rt,tr]=await Promise.all([
-    sb.from("app_config").select("data").eq("id",1).single(),
+    sb.from("app_config").select("data").eq("id",1).maybeSingle(),
     sb.from("stickers").select("*"),
     sb.from("teams").select("*").order("ord"),
     sb.from("codes").select("*"),
@@ -711,13 +711,21 @@ async function loadGlobal(){
   tradeOffers = (tr.data||[]).map(o=>({id:o.id,from:o.from_name,fromUser:o.from_user,give:o.give_id,want:o.want_id}));
 }
 
-// --- cargar perfil del usuario logueado ---
+// --- cargar perfil del usuario logueado (lo crea si no existe) ---
 async function loadProfile(){
-  const {data}=await sb.from("profiles").select("*").eq("id",SESSION.user.id).single();
+  let {data}=await sb.from("profiles").select("*").eq("id",SESSION.user.id).maybeSingle();
+  if(!data){
+    // el perfil no existe todavía (el trigger no corrió): lo creamos
+    const uname=(SESSION.user.user_metadata&&SESSION.user.user_metadata.username)||(SESSION.user.email||"").split("@")[0]||"usuario";
+    const ins=await sb.from("profiles").insert({id:SESSION.user.id,username:uname}).select().single();
+    data=ins.data;
+    if(!data){ // si aún falla, armamos un perfil mínimo en memoria para no romper
+      data={id:SESSION.user.id,username:uname,inventory:{},pasted:{},packs:[],codes_used:[],last_daily:0,is_admin:false};
+    }
+  }
   CUR_PROFILE=data;
   isAdmin=!!data.is_admin;
   CUR=data.username||"usuario";
-  // espejo en G.users para reusar la UI existente
   G.users={}; G.users[CUR]={username:CUR,inventory:data.inventory||{},pasted:data.pasted||{},packs:data.packs||[],lastDaily:Number(data.last_daily)||0,codesUsed:data.codes_used||[]};
 }
 
