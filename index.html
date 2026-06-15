@@ -679,7 +679,7 @@ function adminUsuarios(){
 const SUPABASE_URL  = "https://nawiuflzovgfrqodqpno.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5hd2l1Zmx6b3ZnZnJxb2RxcG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjY2NjMsImV4cCI6MjA5NzA0MjY2M30.IDizI0U7V2ZbrAlwcba5X7Diti5UqwuOsZSzq8CzLoE";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }
+  auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false }
 });
 
 let SESSION=null;          // sesión de Supabase Auth
@@ -763,42 +763,25 @@ function bootMsg(t){let d=document.getElementById("bootmsg");if(!d){d=document.c
 function clearBootMsg(){const bm=document.getElementById("bootmsg");if(bm)bm.remove();}
 function withTimeout(promise,ms,label){return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout:"+label)),ms))]);}
 
-let booted=false;
-async function showApp(){
-  if(booted)return;booted=true;
-  clearBootMsg();
-  if(SESSION){try{await loadProfile();view="home";}catch(e){console.error(e);}}
-  else CUR=null;
-  render();
-}
 async function boot(){
   bootMsg("Cargando contenido del álbum...");
-  // cargar el contenido global (no depende de la sesión)
   try{await withTimeout(loadGlobal(),15000,"loadGlobal");}catch(e){console.error(e);}
-  // intentar leer sesión, pero SIN bloquear: si tarda, seguimos igual
-  try{
-    const {data}=await withTimeout(sb.auth.getSession(),4000,"getSession");
-    SESSION=data&&data.session?data.session:SESSION;
-  }catch(e){
-    console.warn("getSession lento, seguimos sin bloquear",e);
-    // pedimos el usuario directamente (suele responder aunque getSession cuelgue)
-    try{const {data}=await withTimeout(sb.auth.getUser(),4000,"getUser");if(data&&data.user){SESSION={user:data.user};}}catch(_){}
-  }
-  await showApp();
+  clearBootMsg();
+  CUR=null;          // sin sesión persistida: siempre arranca en login
+  render();
 }
-sb.auth.onAuthStateChange(async(_e,s)=>{
+// cuando el usuario inicia sesión (login/registro) o la cierra
+sb.auth.onAuthStateChange(async(ev,s)=>{
   SESSION=s;
-  if(s){ // sesión activa (login, refresh exitoso, etc.)
+  if(s){
     try{await loadGlobal();}catch(_){}
     try{await loadProfile();view="home";}catch(e){console.error(e);}
-    booted=true;clearBootMsg();render();
+    clearBootMsg();render();
   }else{
-    CUR=null;booted=true;clearBootMsg();render();
+    CUR=null;render();
   }
 });
 boot();
-// red de seguridad: si por lo que sea no se mostró nada en 16s, mostrar igual
-setTimeout(()=>{if(!booted)showApp();},16000);
 </script>
 </body>
 </html>
