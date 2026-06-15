@@ -233,6 +233,16 @@ body.editing [data-edit]{outline:2px dashed var(--cyan);outline-offset:2px;curso
 body.editing [data-edit]:hover{background:rgba(47,209,198,.12)}
 .edit-banner{position:fixed;top:0;left:0;right:0;z-index:400;background:linear-gradient(180deg,var(--cyan),#1ba99f);color:var(--cyan-ink);text-align:center;font-size:12px;font-weight:800;padding:8px;display:flex;align-items:center;justify-content:center;gap:14px}
 .edit-banner button{background:var(--cyan-ink);color:#fff;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700}
+.insp-bg{perspective:1200px}
+.insp-stage{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:10px}
+.insp-card{position:relative;border-radius:16px;overflow:hidden;border:2px solid var(--rc,var(--gold-2));background:var(--panel-2);transition:transform .08s ease;transform-style:preserve-3d;box-shadow:0 30px 60px rgba(0,0,0,.6);max-height:62vh}
+.insp-card img{width:100%;height:100%;object-fit:contain;display:block}
+.insp-card .num{position:absolute;top:8px;left:9px;font-size:12px;font-weight:800;color:var(--gold);background:rgba(0,0,0,.5);padding:2px 7px;border-radius:7px;z-index:5}
+.insp-card .insp-ph{width:100%;height:100%;display:grid;place-items:center;font-size:40px;font-weight:800;color:var(--gold)}
+.insp-card .insp-gloss{position:absolute;inset:0;z-index:4;pointer-events:none}
+.insp-info{text-align:center}
+.insp-info .t{font-family:var(--display);font-size:24px;letter-spacing:.02em}
+.insp-info .s{font-size:12px;color:var(--muted);margin-top:2px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -384,8 +394,47 @@ function renderColeccion(screen){
   body.appendChild(el(`<p class="hero-line">Las sueltas muestran cantidad. Las pegadas quedan marcadas como PEGADO. Las que faltan, con signo de pregunta.</p>`));
   const grid=el(`<div class="coll-grid"></div>`);
   G.stickers.slice().sort((a,b)=>a.num-b.num).forEach(s=>{const q=u.inventory[s.id]||0,pasted=!!u.pasted[s.id],have=q>0||pasted;
-    grid.appendChild(el(`<div class="sticker ${rclass(s)} ${s.wide?'wide':''} ${have?'have':'missing'} ${have&&glows(s)?'shine-fx glow-frame':''}"><span class="num">#${s.num}</span>${have?figFace(s):`<span class="q">?</span>`}${pasted?`<span class="pegado">PEGADO</span>`:""}${q>0?`<span class="qty">×${q}</span>`:""}${have?`<div class="name">${s.name}</div>`:""}</div>`));});
+    const card=el(`<div class="sticker ${rclass(s)} ${s.wide?'wide':''} ${have?'have':'missing'} ${have&&glows(s)?'shine-fx glow-frame':''}" ${have?'style="cursor:pointer"':''}><span class="num">#${s.num}</span>${have?figFace(s):`<span class="q">?</span>`}${pasted?`<span class="pegado">PEGADO</span>`:""}${q>0?`<span class="qty">×${q}</span>`:""}${have?`<div class="name">${s.name}</div>`:""}</div>`);
+    if(have)card.onclick=()=>inspectSticker(s);
+    grid.appendChild(card);});
   body.appendChild(grid);screen.appendChild(body);
+}
+// inspector: figurita grande con inclinación 3D siguiendo el mouse
+function inspectSticker(s){
+  const u=user();const q=u.inventory[s.id]||0,pasted=!!u.pasted[s.id];
+  const ar=(s.ratio&&s.ratio>0)?s.ratio:0.75; // ancho/alto
+  const bg=el(`<div class="modal-bg insp-bg"></div>`);
+  const stage=el(`<div class="insp-stage"></div>`);
+  const cardW=Math.min(320, Math.round(window.innerHeight*0.6*ar));
+  const card=el(`<div class="insp-card ${rclass(s)} ${glows(s)?'shine-fx glow-frame':''}" style="width:${cardW}px;aspect-ratio:${ar}">
+      <span class="num">#${s.num}</span>
+      ${s.img?`<img src="${s.img}">`:`<div class="insp-ph">#${s.num}</div>`}
+      <div class="insp-gloss"></div>
+    </div>`);
+  stage.appendChild(card);
+  const info=el(`<div class="insp-info"><div class="t">${s.name}</div><div class="s"><span class="rar-dot ${rclass(s)}"></span>${RAR[s.rarity].label} · #${s.num}${q>0?` · tenés ×${q}`:""}${pasted?" · PEGADA":""}</div></div>`);
+  stage.appendChild(info);
+  const close=el(`<button class="btn ghost" style="max-width:180px;margin:14px auto 0">Cerrar</button>`);
+  close.onclick=()=>bg.remove();stage.appendChild(close);
+  bg.appendChild(stage);
+  // efecto 3D
+  const maxTilt=14;
+  function move(e){
+    const r=card.getBoundingClientRect();
+    const px=(e.clientX-r.left)/r.width-0.5;   // -0.5..0.5
+    const py=(e.clientY-r.top)/r.height-0.5;
+    card.style.transform=`rotateY(${px*maxTilt*2}deg) rotateX(${-py*maxTilt*2}deg)`;
+    card.querySelector(".insp-gloss").style.background=
+      `radial-gradient(circle at ${(px+0.5)*100}% ${(py+0.5)*100}%, rgba(255,255,255,.35), transparent 55%)`;
+  }
+  function reset(){card.style.transform="rotateY(0) rotateX(0)";const g=card.querySelector(".insp-gloss");if(g)g.style.background="none";}
+  card.addEventListener("mousemove",move);
+  card.addEventListener("mouseleave",reset);
+  // soporte táctil (celular): inclina según el dedo
+  card.addEventListener("touchmove",(e)=>{if(e.touches[0])move(e.touches[0]);},{passive:true});
+  card.addEventListener("touchend",reset);
+  bg.onclick=(e)=>{if(e.target===bg)bg.remove();};
+  document.body.appendChild(bg);
 }
 
 function renderCodigos(screen){
