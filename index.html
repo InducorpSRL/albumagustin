@@ -21,7 +21,8 @@ body{font-family:var(--body);color:var(--ink);
              radial-gradient(900px 600px at 100% 100%,#3a0f25 0%,transparent 55%),var(--bg);overflow:hidden;}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 img{max-width:100%;display:block}
-#app{height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;max-width:1100px;margin:0 auto;width:100%}
+body.mode-mobile #app{max-width:440px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
 .screen{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 20px 84px;display:flex;flex-direction:column}
 .screen::-webkit-scrollbar{width:0}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 22px 4px;gap:14px;flex:none}
@@ -117,6 +118,7 @@ label.fld{display:block;font-size:11px;letter-spacing:.04em;color:var(--muted);m
 /* ---------- ÁLBUM LIBRO (alto, tipo libro real) ---------- */
 .book-area{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:0;overflow:hidden}
 .book{display:flex;gap:0;width:100%;max-width:820px;flex:1;min-height:0;align-items:stretch;margin-bottom:4px}
+.book.one{max-width:380px}  /* modo celular: una sola página angosta */
 .page{flex:1 1 0;min-width:0;min-height:0;background:linear-gradient(180deg,#241634,#150e22);border:1px solid var(--line);position:relative;overflow:hidden;background-size:cover;background-position:center;display:flex;flex-direction:column}
 .page.left{border-radius:12px 0 0 12px;border-right:2px solid rgba(0,0,0,.55)}
 .page.right{border-radius:0 12px 12px 0;border-left:1px solid rgba(255,255,255,.05)}
@@ -146,7 +148,7 @@ label.fld{display:block;font-size:11px;letter-spacing:.04em;color:var(--muted);m
 .mslot.placeable:active{transform:scale(.93)}
 .mslot .plus{font-size:16px;color:var(--cyan);font-weight:300}
 .mslot .num{position:absolute;top:1px;left:2px;font-size:7px;font-weight:800;color:var(--gold);background:rgba(0,0,0,.55);padding:0 3px;border-radius:3px;z-index:5}
-.mslot img{width:100%;height:100%;object-fit:cover}
+.mslot img{width:100%;height:100%;object-fit:contain}
 .mslot .glint{position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.5) 50%,transparent 70%);animation:glint 1.4s linear infinite}
 @keyframes glint{0%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
 @keyframes stickdrop{0%{transform:translateY(-16px) scale(1.25) rotate(-6deg);opacity:0}55%{transform:translateY(2px) scale(.95);opacity:1}100%{transform:translateY(0) scale(1)}}
@@ -256,6 +258,7 @@ const G={
   teams:[{id:"EQA",name:"Equipo Rojo",crest:null,bg:null},{id:"EQB",name:"Equipo Azul",crest:null,bg:null},{id:"EQC",name:"Equipo Verde",crest:null,bg:null}],
   codes:[],retos:[],users:{}};
 let CUR=null,view="home",bookPage=0,pageDir=0,albumIndexOpen=false,tradeOffers=[],isAdmin=false,adminTab="figuritas",authMode="login",editing=false;
+let viewMode="desktop"; // "desktop" = 2 páginas por vista; "mobile" = 1 página por vista
 function T(k){return G.config.text[k]!==undefined?G.config.text[k]:k;}
 
 const sampleNames=["Escudo Rojo","Jugador 2","Jugador 3","Jugador 4","Jugador 5","Jugador 6","Jugador 7","Jugador 8","Jugador 9","Jugador 10"];
@@ -288,6 +291,7 @@ function E(key){return`<span data-edit="${key}">${T(key)}</span>`;}
 
 const VIEWS={home:renderHome,coleccion:renderColeccion,codigos:renderCodigos,album:renderAlbum,intercambio:renderTrade,sobres:renderPacks,retos:renderRetos,config:renderConfig,admin:renderAdmin};
 function render(){
+  document.body.classList.toggle("mode-mobile",viewMode==="mobile");
   const app=$("#app");
   if(!CUR){app.innerHTML="";app.appendChild(renderAuth());return;}
   app.innerHTML="";
@@ -345,6 +349,11 @@ function renderAuth(){
     };
   }
   wrap.appendChild(card);
+  // selector de modo de visualización
+  const modeSel=el(`<div style="margin-top:18px"><div class="fld" style="text-align:center;margin-bottom:8px">Modo de visualización</div><div class="row" style="gap:8px"><button class="btn ${viewMode==='desktop'?'gold':'ghost'} sm" id="mdesk" style="flex:1">💻 Computadora</button><button class="btn ${viewMode==='mobile'?'gold':'ghost'} sm" id="mmob" style="flex:1">📱 Celular</button></div></div>`);
+  modeSel.querySelector("#mdesk").onclick=()=>{viewMode="desktop";render();};
+  modeSel.querySelector("#mmob").onclick=()=>{viewMode="mobile";render();};
+  wrap.appendChild(modeSel);
   const sw=el(`<div class="switch">${authMode==="login"?`¿No tenés cuenta? <b>Registrate</b>`:`¿Ya tenés cuenta? <b>Iniciá sesión</b>`}</div>`);
   sw.onclick=()=>{authMode=authMode==="login"?"register":"login";render();};wrap.appendChild(sw);
   return wrap;
@@ -452,16 +461,31 @@ function renderAlbum(screen){
     const idx=el(`<div class="album-index"></div>`);
     G.teams.forEach((t,i)=>{let total=0,done=0;for(let pos=1;pos<=G.config.slotsPerTeam;pos++){const s=stickerAtPos(t.id,pos);if(s){total++;if(u.pasted[s.id])done++;}}
       const c=el(`<button class="idx-team"><div class="crest">${crestFace(t)}</div><div class="tn">${t.name}</div><div class="prog">${done}/${total||G.config.slotsPerTeam}</div></button>`);
-      c.onclick=()=>{bookPage=i+1;albumIndexOpen=false;render();};idx.appendChild(c);});
+      c.onclick=()=>{bookPage=(viewMode==="mobile")?(i*2+1):(i+1);albumIndexOpen=false;render();};idx.appendChild(c);});
     body.appendChild(idx);const close=el(`<button class="btn ghost" style="margin-top:14px">Volver al álbum</button>`);close.onclick=()=>{albumIndexOpen=false;render();};body.appendChild(close);screen.appendChild(body);return;
   }
-  const totalViews=G.teams.length+2;
-  const area=el(`<div class="book-area"></div>`);
-  const book=el(`<div class="book ${pageDir===1?'turn-next':pageDir===-1?'turn-prev':''}"></div>`);
+  const mobile=viewMode==="mobile";
+  // desktop: vistas = tapa + N(doble página) + contratapa = N+2
+  // mobile : vistas = tapa + 2N(una página cada una) + contratapa = 2N+2
+  const totalViews = mobile ? (G.teams.length*2+2) : (G.teams.length+2);
+  const area=el(`<div class="book-area ${mobile?'mobile':''}"></div>`);
+  const book=el(`<div class="book ${mobile?'one':''} ${pageDir===1?'turn-next':pageDir===-1?'turn-prev':''}"></div>`);
   pageDir=0;
-  if(bookPage===0){book.appendChild(renderCoverPage(false));}
-  else if(bookPage===totalViews-1){book.appendChild(renderCoverPage(true));}
-  else{
+  let label;
+  if(bookPage===0){book.appendChild(renderCoverPage(false));label="Tapa";}
+  else if(bookPage===totalViews-1){book.appendChild(renderCoverPage(true));label="Contratapa";}
+  else if(mobile){
+    // cada equipo ocupa 2 vistas: izquierda (impar) y derecha (par)
+    const idx=bookPage-1;            // 0-based dentro de las páginas internas
+    const teamIdx=Math.floor(idx/2);
+    const side=idx%2;                // 0 = izquierda(1..mitad), 1 = derecha
+    const team=G.teams[teamIdx];
+    const pg=el(`<div class="page single"></div>`);
+    if(team.bg){pg.style.backgroundImage=`url(${team.bg})`;pg.appendChild(el(`<div class="overlay"></div>`));}
+    pg.appendChild(renderPageGrid(team,side));
+    book.appendChild(pg);
+    label=team.name+(side===0?" · 1ª parte":" · 2ª parte");
+  }else{
     const team=G.teams[bookPage-1];
     const left=el(`<div class="page left"></div>`);
     if(team.bg){left.style.backgroundImage=`url(${team.bg})`;left.appendChild(el(`<div class="overlay"></div>`));}
@@ -470,6 +494,7 @@ function renderAlbum(screen){
     if(team.bg){right.style.backgroundImage=`url(${team.bg})`;right.appendChild(el(`<div class="overlay"></div>`));}
     right.appendChild(el(`<div class="spine"></div>`));right.appendChild(renderPageGrid(team,1));
     book.appendChild(left);book.appendChild(right);
+    label=team.name;
   }
   area.appendChild(book);
 
@@ -479,8 +504,6 @@ function renderAlbum(screen){
   const turn=(dir)=>{pageDir=dir;bookPage+=dir;render();};
   prev.onclick=()=>{if(editing)return;if(bookPage>0)turn(-1);};
   next.onclick=()=>{if(editing)return;if(bookPage<totalViews-1)turn(1);};
-  let label;
-  if(bookPage===0)label="Tapa";else if(bookPage===totalViews-1)label="Contratapa";else label=G.teams[bookPage-1].name;
   ctrls.appendChild(prev);ctrls.appendChild(el(`<span class="pageno">${label}<br><span style="opacity:.7">${bookPage+1} / ${totalViews}</span></span>`));ctrls.appendChild(next);
   area.appendChild(ctrls);
   screen.appendChild(area);
@@ -560,9 +583,9 @@ function adminFiguritas(){
   add.querySelector("#fwide").onclick=function(){fwide=!fwide;this.classList.toggle("on",fwide);};
   add.querySelector("#fpeg").onclick=function(){fpeg=!fpeg;this.classList.toggle("on",fpeg);};
   add.querySelector("#fa").onclick=async()=>{const name=$("#fn").value.trim()||"Sin nombre",num=parseInt($("#fnum").value)||(G.stickers.length+1),team=ts.value,rar=$("#frar").value,f=$("#fimg").files[0];
-    let img=null;if(f)img=await uploadImage(f);
+    let img=null,ratio=null;if(f){img=await uploadImage(f);ratio=uploadImage.lastRatio;}
     const id="S"+Date.now();
-    const rec={id,num,name,team,img,rarity:rar,wide:fwide,placeable:fpeg};
+    const rec={id,num,name,team,img,rarity:rar,wide:fwide,placeable:fpeg,ratio};
     const {error}=await sb.from("stickers").insert(rec);
     if(error){toast("Error al crear");return;}
     G.stickers.push(rec);toast("Figurita creada");render();};
@@ -577,8 +600,8 @@ function editSticker(s){
   m.querySelector("#ewide").onclick=function(){ewide=!ewide;this.classList.toggle("on",ewide);};
   m.querySelector("#epeg").onclick=function(){epeg=!epeg;this.classList.toggle("on",epeg);};
   m.querySelector("#es").onclick=async()=>{s.name=$("#en").value.trim()||s.name;s.num=parseInt($("#enum").value)||s.num;s.rarity=$("#er").value;s.wide=ewide;s.placeable=epeg;const f=$("#ei").files[0];
-    if(f){const url=await uploadImage(f);if(url)s.img=url;}
-    await sb.from("stickers").update({num:s.num,name:s.name,rarity:s.rarity,wide:s.wide,placeable:s.placeable,img:s.img}).eq("id",s.id);
+    if(f){const url=await uploadImage(f);if(url){s.img=url;s.ratio=uploadImage.lastRatio;}}
+    await sb.from("stickers").update({num:s.num,name:s.name,rarity:s.rarity,wide:s.wide,placeable:s.placeable,img:s.img,ratio:s.ratio}).eq("id",s.id);
     bg.remove();toast("Guardado");render();};
   m.querySelector("#ec").onclick=()=>bg.remove();bg.appendChild(m);document.body.appendChild(bg);
 }
@@ -712,7 +735,7 @@ async function loadGlobal(){
   ]);
   G.config = Object.assign(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), (cfg.data&&cfg.data.data)||{});
   if(!G.config.text) G.config.text=JSON.parse(JSON.stringify(DEFAULT_CONFIG.text));
-  G.stickers = (st.data||[]).map(s=>({id:s.id,num:s.num,name:s.name,team:s.team,img:s.img,rarity:s.rarity,wide:s.wide,placeable:s.placeable}));
+  G.stickers = (st.data||[]).map(s=>({id:s.id,num:s.num,name:s.name,team:s.team,img:s.img,rarity:s.rarity,wide:s.wide,placeable:s.placeable,ratio:s.ratio}));
   G.teams = (tm.data||[]).map(t=>({id:t.id,name:t.name,crest:t.crest,bg:t.bg}));
   G.codes = (cd.data||[]).map(c=>({code:c.code,type:c.type,amount:c.amount}));
   G.retos = (rt.data||[]).map(r=>({id:r.id,week:r.week,title:r.title,desc:r.descr,reward:r.reward}));
@@ -751,10 +774,27 @@ function saveProfileSoon(){
 async function saveConfig(){await sb.from("app_config").update({data:G.config,updated_at:new Date().toISOString()}).eq("id",1);}
 
 // --- subir imagen a Storage y devolver URL pública ---
+// redimensiona la imagen en el navegador manteniendo proporción (máx MAXW de ancho)
+function resizeImage(file,maxW){return new Promise((resolve)=>{
+  const img=new Image();const url=URL.createObjectURL(file);
+  img.onload=()=>{
+    let w=img.naturalWidth,h=img.naturalHeight;const ratio=w/h;
+    if(w>maxW){w=maxW;h=Math.round(maxW/ratio);}
+    const c=document.createElement("canvas");c.width=w;c.height=h;
+    c.getContext("2d").drawImage(img,0,0,w,h);
+    URL.revokeObjectURL(url);
+    c.toBlob(b=>resolve({blob:b,ratio:img.naturalWidth/img.naturalHeight}),"image/webp",0.85);
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);resolve(null);};
+  img.src=url;
+});}
+// sube y devuelve la URL pública (string). Guarda la última proporción en uploadImage.lastRatio
 async function uploadImage(file){
-  const ext=(file.name.split(".").pop()||"png").toLowerCase();
-  const path="img/"+Date.now()+"-"+Math.random().toString(36).slice(2,8)+"."+ext;
-  const {error}=await sb.storage.from("media").upload(path,file,{upsert:true});
+  const r=await resizeImage(file,700);
+  const blob=r?r.blob:file;
+  uploadImage.lastRatio=r?r.ratio:null;
+  const path="img/"+Date.now()+"-"+Math.random().toString(36).slice(2,8)+".webp";
+  const {error}=await sb.storage.from("media").upload(path,blob,{upsert:true,contentType:"image/webp"});
   if(error){toast("Error subiendo imagen");return null;}
   const {data}=sb.storage.from("media").getPublicUrl(path);
   return data.publicUrl;
