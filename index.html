@@ -64,8 +64,11 @@ body.mode-mobile #app{max-width:440px;border-left:1px solid var(--line);border-r
 
 .r-comun{--rc:var(--r-comun)}.r-rara{--rc:var(--r-rara)}.r-ultra{--rc:var(--r-ultra)}.r-extra{--rc:var(--r-extra)}.r-escudo{--rc:var(--r-escudo)}
 .rar-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--rc,var(--r-comun));margin-right:5px;vertical-align:middle}
-@keyframes shine{0%{background-position:-150% 0}100%{background-position:250% 0}}
-.shine-fx::before{content:"";position:absolute;inset:0;z-index:4;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.6) 47%,rgba(255,255,255,.95) 50%,rgba(255,255,255,.6) 53%,transparent 70%);background-size:250% 100%;animation:shine 2.4s linear infinite;mix-blend-mode:screen}
+@keyframes shine{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.shine-fx::before,.shine-extra::before,.shine-escudo::before{content:"";position:absolute;inset:0;z-index:4;pointer-events:none;background-size:200% 100%;animation:shine 3s linear infinite;mix-blend-mode:screen}
+.shine-fx::before{background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.55) 48%,rgba(255,255,255,.9) 50%,rgba(255,255,255,.55) 52%,transparent 65%)}
+.shine-extra::before{background:linear-gradient(115deg,transparent 30%,rgba(255,225,130,.5) 45%,rgba(255,247,200,.95) 50%,rgba(255,210,90,.5) 55%,transparent 70%)}
+.shine-escudo::before{background:linear-gradient(115deg,transparent 30%,rgba(120,255,200,.45) 45%,rgba(220,255,240,.9) 50%,rgba(80,230,170,.45) 55%,transparent 70%)}
 .glow-frame{box-shadow:0 0 0 2px var(--rc) inset,0 0 14px color-mix(in srgb,var(--rc) 55%,transparent)}
 
 .coll-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
@@ -123,6 +126,7 @@ label.fld{display:block;font-size:11px;letter-spacing:.04em;color:var(--muted);m
 .page.left{border-radius:12px 0 0 12px;border-right:2px solid rgba(0,0,0,.55)}
 .page.right{border-radius:0 12px 12px 0;border-left:1px solid rgba(255,255,255,.05)}
 .page.single{border-radius:12px;max-width:50%;margin:0 auto}
+body.mode-mobile .page.single{max-width:100%}
 .page .spine{position:absolute;top:0;bottom:0;width:16px;pointer-events:none;z-index:3}
 .page.left .spine{right:0;background:linear-gradient(90deg,transparent,rgba(0,0,0,.5))}
 .page.right .spine{left:0;background:linear-gradient(270deg,transparent,rgba(0,0,0,.4))}
@@ -243,6 +247,18 @@ body.editing [data-edit]:hover{background:rgba(47,209,198,.12)}
 .insp-info{text-align:center}
 .insp-info .t{font-family:var(--display);font-size:24px;letter-spacing:.02em}
 .insp-info .s{font-size:12px;color:var(--muted);margin-top:2px}
+.prog-big{font-family:var(--display);font-size:46px;color:var(--gold);line-height:1}
+.prog-big span{font-family:var(--body);font-size:13px;color:var(--muted);font-weight:600;margin-left:6px}
+.prog-bar{height:10px;background:var(--bg2);border-radius:99px;overflow:hidden;margin:10px 0}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--maroon-2),var(--gold));border-radius:99px;transition:width .4s}
+.stat-row{display:flex;gap:10px;margin-top:6px}
+.stat{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center}
+.stat .sv{font-family:var(--display);font-size:24px;color:var(--ink)}
+.stat .sl{font-size:10px;color:var(--muted);font-weight:600;margin-top:2px}
+/* en celular la página única ocupa casi toda la pantalla */
+body.mode-mobile .book.one{max-width:100%}
+body.mode-mobile .book-area{padding:0 4px}
+.sticker.pegada-gris .photo,.sticker.pegada-gris .ph{filter:grayscale(1) brightness(.7)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -269,6 +285,13 @@ const G={
   codes:[],retos:[],users:{}};
 let CUR=null,view="home",bookPage=0,pageDir=0,albumIndexOpen=false,tradeOffers=[],isAdmin=false,adminTab="figuritas",authMode="login",editing=false;
 let viewMode="desktop"; // "desktop" = 2 páginas por vista; "mobile" = 1 página por vista
+// memoria del formulario de crear figurita (recuerda última elección)
+const figForm={rarity:"comun",wide:false,placeable:true,inPack:true,team:null};
+// filtros del panel admin de figuritas
+let admFilter={rar:"todas",team:"todos",q:""};
+// estado de colección (orden y filtros)
+let collSort="album"; // album|num|rareza|equipo
+let collFilter={rar:"todas",team:"todos"};
 function T(k){return G.config.text[k]!==undefined?G.config.text[k]:k;}
 
 const sampleNames=["Escudo Rojo","Jugador 2","Jugador 3","Jugador 4","Jugador 5","Jugador 6","Jugador 7","Jugador 8","Jugador 9","Jugador 10"];
@@ -294,13 +317,25 @@ function randSticker(){return G.stickers[Math.floor(Math.random()*G.stickers.len
 function fileToDataURL(f,cb){const r=new FileReader();r.onload=()=>cb(r.result);r.readAsDataURL(f);}
 function rclass(s){return s&&RAR[s.rarity]?RAR[s.rarity].cls:"r-comun";}
 function glows(s){return s&&GLOW.includes(s.rarity);}
+function shineClass(s){if(!glows(s))return "";return (s.rarity==="extra"?"shine-extra":"shine-escudo")+" glow-frame";}
 function canPaste(s){return s && !(s.rarity==="extra" && s.placeable===false);}
 function figFace(s){if(!s)return`<div class="ph">?</div>`;if(s.img)return`<img class="photo" src="${s.img}">`;return`<div class="ph">#${s.num}</div>`;}
 function crestFace(t){return t.crest?`<img src="${t.crest}">`:"🛡️";}
 function E(key){return`<span data-edit="${key}">${T(key)}</span>`;}
 
-const VIEWS={home:renderHome,coleccion:renderColeccion,codigos:renderCodigos,album:renderAlbum,intercambio:renderTrade,sobres:renderPacks,retos:renderRetos,config:renderConfig,admin:renderAdmin};
+const VIEWS={home:renderHome,coleccion:renderColeccion,codigos:renderCodigos,album:renderAlbum,intercambio:renderTrade,sobres:renderPacks,retos:renderRetos,config:renderConfig,admin:renderAdmin,perfil:renderPerfil};
+function applyBranding(){
+  // título de la pestaña
+  document.title=(G.config.title||"Álbum")+" "+(G.config.titleAccent||"");
+  // favicon = logo de la competición (si hay)
+  if(G.config.logo){
+    let link=document.querySelector("link[rel~='icon']");
+    if(!link){link=document.createElement("link");link.rel="icon";document.head.appendChild(link);}
+    link.href=G.config.logo;
+  }
+}
 function render(){
+  applyBranding();
   document.body.classList.toggle("mode-mobile",viewMode==="mobile");
   const app=$("#app");
   if(!CUR){app.innerHTML="";app.appendChild(renderAuth());return;}
@@ -326,7 +361,7 @@ function bindEditables(){
 function renderTopbar(){return el(`<div class="topbar" style="${editing?'margin-top:34px':''}"><div class="brand"><div class="logo">${G.config.logo?`<img src="${G.config.logo}">`:"🏆"}</div><div class="txt"><span class="eyebrow">Álbum digital</span><h1>${G.config.title} <b>${G.config.titleAccent}</b></h1></div></div></div>`);}
 function renderBottomNav(){
   const nav=el(`<div class="bottomnav"></div>`);
-  [{id:"home",ico:"🏠",lab:T("nav_inicio")},{id:"retos",ico:"🎯",lab:T("nav_retos")},{id:"admin",ico:"🛠️",lab:T("nav_admin")},{id:"config",ico:"⚙️",lab:T("nav_config")}].forEach(it=>{
+  [{id:"home",ico:"🏠",lab:T("nav_inicio")},{id:"perfil",ico:"👤",lab:"Mi perfil"},{id:"retos",ico:"🎯",lab:T("nav_retos")},{id:"admin",ico:"🛠️",lab:T("nav_admin")},{id:"config",ico:"⚙️",lab:T("nav_config")}].forEach(it=>{
     const b=el(`<button class="nav-btn ${view===it.id?'active':''}"><span class="ico">${it.ico}</span>${it.lab}</button>`);
     b.onclick=()=>{if(editing)return;if(it.id==="admin")openAdminLogin();else{view=it.id;albumIndexOpen=false;render();}};nav.appendChild(b);});
   return nav;
@@ -391,10 +426,28 @@ function secHead(eb,ti){const h=el(`<div class="sec-head"><button class="back">�
 function renderColeccion(screen){
   const u=user();screen.appendChild(secHead(`Colección de ${G.config.title}`,T("tile_coleccion")));
   const body=el(`<div class="scroll-body"></div>`);
-  body.appendChild(el(`<p class="hero-line">Las sueltas muestran cantidad. Las pegadas quedan marcadas como PEGADO. Las que faltan, con signo de pregunta.</p>`));
+  // controles de orden y filtro
+  const teamOpts=`<option value="todos">Todos</option>`+G.teams.map(t=>`<option value="${t.id}" ${collFilter.team===t.id?'selected':''}>${t.name}</option>`).join("");
+  const rarOpts=`<option value="todas">Todas</option>`+RAR_KEYS.map(k=>`<option value="${k}" ${collFilter.rar===k?'selected':''}>${RAR[k].label}</option>`).join("");
+  const ctr=el(`<div class="panel" style="padding:12px"><div class="row"><div style="flex:1"><label class="fld">Ordenar</label><select id="csort"><option value="album" ${collSort==='album'?'selected':''}>Como el álbum</option><option value="num" ${collSort==='num'?'selected':''}>Número</option><option value="rareza" ${collSort==='rareza'?'selected':''}>Rareza</option><option value="equipo" ${collSort==='equipo'?'selected':''}>Equipo</option></select></div><div style="flex:1"><label class="fld">Rareza</label><select id="cfr">${rarOpts}</select></div><div style="flex:1"><label class="fld">Equipo</label><select id="cft">${teamOpts}</select></div></div></div>`);
+  ctr.querySelector("#csort").onchange=e=>{collSort=e.target.value;render();};
+  ctr.querySelector("#cfr").onchange=e=>{collFilter.rar=e.target.value;render();};
+  ctr.querySelector("#cft").onchange=e=>{collFilter.team=e.target.value;render();};
+  body.appendChild(ctr);
+  body.appendChild(el(`<p class="hero-line">Repetidas a color, pegadas en gris, faltantes con signo de pregunta. Tocá una para verla grande.</p>`));
+  // construir lista
+  let list=G.stickers.slice();
+  if(collFilter.rar!=="todas")list=list.filter(s=>s.rarity===collFilter.rar);
+  if(collFilter.team!=="todos")list=list.filter(s=>s.team===collFilter.team);
+  if(collSort==="album")list.sort(albumOrder);
+  else if(collSort==="num")list.sort((a,b)=>(a.num||0)-(b.num||0));
+  else if(collSort==="rareza")list.sort((a,b)=>RAR_KEYS.indexOf(b.rarity)-RAR_KEYS.indexOf(a.rarity)||albumOrder(a,b));
+  else if(collSort==="equipo")list.sort(albumOrder);
   const grid=el(`<div class="coll-grid"></div>`);
-  G.stickers.slice().sort((a,b)=>a.num-b.num).forEach(s=>{const q=u.inventory[s.id]||0,pasted=!!u.pasted[s.id],have=q>0||pasted;
-    const card=el(`<div class="sticker ${rclass(s)} ${s.wide?'wide':''} ${have?'have':'missing'} ${have&&glows(s)?'shine-fx glow-frame':''}" ${have?'style="cursor:pointer"':''}><span class="num">#${s.num}</span>${have?figFace(s):`<span class="q">?</span>`}${pasted?`<span class="pegado">PEGADO</span>`:""}${q>0?`<span class="qty">×${q}</span>`:""}${have?`<div class="name">${s.name}</div>`:""}</div>`);
+  list.forEach(s=>{const q=u.inventory[s.id]||0,pasted=!!u.pasted[s.id],have=q>0||pasted;
+    const repe=q>0; // tiene suelta(s) = a color; si solo pegada y sin suelta = gris
+    const grayscale=pasted&&!repe;
+    const card=el(`<div class="sticker ${rclass(s)} ${s.wide?'wide':''} ${have?'have':'missing'} ${repe?shineClass(s):''} ${grayscale?'pegada-gris':''}" ${have?'style="cursor:pointer"':''}><span class="num">#${s.num}</span>${have?figFace(s):`<span class="q">?</span>`}${pasted?`<span class="pegado">PEGADO</span>`:""}${q>0?`<span class="qty">×${q}</span>`:""}${have?`<div class="name">${s.name}</div>`:""}</div>`);
     if(have)card.onclick=()=>inspectSticker(s);
     grid.appendChild(card);});
   body.appendChild(grid);screen.appendChild(body);
@@ -406,7 +459,7 @@ function inspectSticker(s){
   const bg=el(`<div class="modal-bg insp-bg"></div>`);
   const stage=el(`<div class="insp-stage"></div>`);
   const cardW=Math.min(320, Math.round(window.innerHeight*0.6*ar));
-  const card=el(`<div class="insp-card ${rclass(s)} ${glows(s)?'shine-fx glow-frame':''}" style="width:${cardW}px;aspect-ratio:${ar}">
+  const card=el(`<div class="insp-card ${rclass(s)} ${shineClass(s)}" style="width:${cardW}px;aspect-ratio:${ar}">
       <span class="num">#${s.num}</span>
       ${s.img?`<img src="${s.img}">`:`<div class="insp-ph">#${s.num}</div>`}
       <div class="insp-gloss"></div>
@@ -441,7 +494,7 @@ function renderCodigos(screen){
   const u=user();screen.appendChild(secHead("Recompensas",T("tile_codigos")));
   const body=el(`<div class="scroll-body"></div>`);
   const p=el(`<div class="panel"><h3>${E("codigos_titulo")}</h3><p>${E("codigos_desc")}</p><div class="sp"></div><input id="codein" placeholder="EJ: BIENVENIDA" style="text-transform:uppercase"><div class="sp"></div><button class="btn gold" id="cb">Canjear</button><div class="err" id="ce"></div></div>`);
-  p.querySelector("#cb").onclick=()=>{if(editing)return;const code=$("#codein").value.trim().toUpperCase();const c=G.codes.find(x=>x.code===code);if(!c){$("#ce").textContent="Código inválido.";return;}if(u.codesUsed.includes(code)){$("#ce").textContent="Ya usaste este código.";return;}u.codesUsed.push(code);if(c.type==="sobres"){for(let i=0;i<c.amount;i++)u.packs.push("PC"+Date.now()+i);toast(`+${c.amount} sobre(s)`);}else{for(let i=0;i<c.amount;i++){const s=randSticker();u.inventory[s.id]=(u.inventory[s.id]||0)+1;}toast(`+${c.amount} figurita(s)`);}render();};
+  p.querySelector("#cb").onclick=()=>{if(editing)return;const code=$("#codein").value.trim().toUpperCase();const c=G.codes.find(x=>x.code===code);if(!c){$("#ce").textContent="Código inválido.";return;}if(u.codesUsed.includes(code)){$("#ce").textContent="Ya usaste este código.";return;}u.codesUsed.push(code);if(c.type==="sobres"){for(let i=0;i<c.amount;i++)u.packs.push("PC"+Date.now()+i);toast(`+${c.amount} sobre(s)`);}else{for(let i=0;i<c.amount;i++){const s=weightedPick(packPool())||randSticker();if(s)u.inventory[s.id]=(u.inventory[s.id]||0)+1;}toast(`+${c.amount} figurita(s)`);}render();};
   body.appendChild(p);screen.appendChild(body);
 }
 
@@ -479,9 +532,9 @@ function renderPageGrid(team,side){
       continue;
     }
     const sid=s.id;const pasted=u.pasted[sid];const placeable=!pasted&&(u.inventory[sid]||0)>0&&canPaste(s);
-    const slot=el(`<div class="mslot ${rclass(s)} ${wide?'wide':''} ${pasted?'filled':''} ${placeable?'placeable':''} ${pasted&&glows(s)?'shine-fx glow-frame':''}"><span class="num">#${s.num}</span>${pasted?figFace(s):(placeable?`<span class="plus">+</span><div class="glint"></div>`:`<span class="plus" style="color:var(--line)">+</span>`)}</div>`);
-    if(placeable){slot.onclick=()=>{if(editing)return;u.pasted[sid]=true;u.inventory[sid]--;if(u.inventory[sid]<=0)delete u.inventory[sid];
-      slot.classList.remove("placeable");slot.classList.add("filled");if(glows(s))slot.classList.add("shine-fx","glow-frame");
+    const slot=el(`<div class="mslot ${rclass(s)} ${wide?'wide':''} ${pasted?'filled':''} ${placeable?'placeable':''} ${pasted?shineClass(s):''}"><span class="num">#${s.num}</span>${pasted?figFace(s):(placeable?`<span class="plus">+</span><div class="glint"></div>`:`<span class="plus" style="color:var(--line)">+</span>`)}</div>`);
+    if(placeable){let used=false;slot.onclick=()=>{if(editing||used)return;if(u.pasted[sid]||(u.inventory[sid]||0)<=0)return;used=true;u.pasted[sid]=true;u.inventory[sid]--;if(u.inventory[sid]<=0)delete u.inventory[sid];
+      slot.onclick=null;slot.classList.remove("placeable");slot.classList.add("filled");if(glows(s)){slot.classList.add(s.rarity==="extra"?"shine-extra":"shine-escudo","glow-frame");}
       slot.innerHTML=`<span class="num">#${s.num}</span>`;slot.appendChild(el(`<div class="stickin">${figFace(s)}</div>`));slot.appendChild(el(`<div class="stamp"></div>`));
       toast(`¡Pegaste #${s.num} ${s.name}!`);updatePile();saveProfileSoon();};}
     grid.appendChild(slot);
@@ -579,9 +632,9 @@ function renderTrade(screen){
   body.appendChild(create);body.appendChild(el(`<p class="hero-line" style="margin-top:6px">Ofertas activas</p>`));
   if(!tradeOffers.length)body.appendChild(el(`<div class="empty-note">Todavía no hay ofertas. Publicá la primera.</div>`));
   tradeOffers.forEach(o=>{const gsk=G.stickers.find(x=>x.id===o.give),wsk=G.stickers.find(x=>x.id===o.want),mine=o.from===u.username;
-    const card=el(`<div class="offer"><div class="who">${mine?"Tu oferta":"De "+o.from}</div><div class="deal"><div class="side"><div class="lab">Da</div><div class="card ${rclass(gsk)} ${glows(gsk)?'shine-fx':''}">${figFace(gsk)}</div></div><div class="arrow-mid">⇄</div><div class="side"><div class="lab">Quiere</div><div class="card ${rclass(wsk)} ${glows(wsk)?'shine-fx':''}">${figFace(wsk)}</div></div></div><div class="sp"></div>${mine?`<button class="btn ghost sm cancel">Cancelar oferta</button>`:`<button class="btn sm accept">Aceptar (doy #${wsk.num})</button>`}</div>`);
+    const card=el(`<div class="offer"><div class="who">${mine?"Tu oferta":"De "+o.from}</div><div class="deal"><div class="side"><div class="lab">Da</div><div class="card ${rclass(gsk)} ${shineClass(gsk)}">${figFace(gsk)}</div></div><div class="arrow-mid">⇄</div><div class="side"><div class="lab">Quiere</div><div class="card ${rclass(wsk)} ${shineClass(wsk)}">${figFace(wsk)}</div></div></div><div class="sp"></div>${mine?`<button class="btn ghost sm cancel">Cancelar oferta</button>`:`<button class="btn sm accept">Aceptar (doy #${wsk.num})</button>`}</div>`);
     if(mine)card.querySelector(".cancel").onclick=async()=>{if(o.id)await sb.from("trades").delete().eq("id",o.id);tradeOffers=tradeOffers.filter(x=>x.id!==o.id);render();};
-    else card.querySelector(".accept").onclick=async()=>{if((u.inventory[o.want]||0)<=0){toast("No tenés esa figurita para dar");return;}u.inventory[o.want]--;if(u.inventory[o.want]<=0)delete u.inventory[o.want];u.inventory[o.give]=(u.inventory[o.give]||0)+1;if(o.id)await sb.from("trades").delete().eq("id",o.id);tradeOffers=tradeOffers.filter(x=>x.id!==o.id);toast("¡Intercambio realizado!");render();};
+    else card.querySelector(".accept").onclick=async()=>{if((u.inventory[o.want]||0)<=0){toast("No tenés esa figurita para dar");return;}u.inventory[o.want]--;if(u.inventory[o.want]<=0)delete u.inventory[o.want];u.inventory[o.give]=(u.inventory[o.give]||0)+1;u.trades=(u.trades||0)+1;if(o.id)await sb.from("trades").delete().eq("id",o.id);tradeOffers=tradeOffers.filter(x=>x.id!==o.id);toast("¡Intercambio realizado!");saveProfileSoon();render();};
     body.appendChild(card);});
   screen.appendChild(body);
 }
@@ -600,14 +653,77 @@ function renderPacks(screen){
     e.onclick=()=>{if(editing)return;openPack(pid);};shelf.appendChild(e);});body.appendChild(shelf);}
   screen.appendChild(body);
 }
+// peso de aparición por rareza (mayor = más común)
+const RARITY_WEIGHT={comun:100,rara:35,ultra:12,escudo:8,extra:4};
+// figuritas elegibles para sobres (excluye extras y las marcadas como "no sale en sobres")
+function packPool(){return G.stickers.filter(s=>s.inPack!==false && s.rarity!=="extra");}
+function extraPool(){return G.stickers.filter(s=>s.inPack!==false && s.rarity==="extra");}
+function weightedPick(list){
+  if(!list.length)return null;
+  let total=0;const acc=[];
+  for(const s of list){const w=RARITY_WEIGHT[s.rarity]||50;total+=w;acc.push([total,s]);}
+  const r=Math.random()*total;
+  for(const [t,s] of acc){if(r<t)return s;}
+  return list[list.length-1];
+}
 function openPack(pid){
   const u=user();u.packs=u.packs.filter(p=>p!==pid);
-  const drops=[],wasNew=[];for(let i=0;i<5;i++){const s=randSticker();wasNew.push(!(u.inventory[s.id]>0)&&!u.pasted[s.id]);u.inventory[s.id]=(u.inventory[s.id]||0)+1;drops.push(s);}
+  u.opened=(u.opened||0)+1;
+  const pool=packPool();
+  const drops=[],wasNew=[];
+  // 5 figuritas normales (no extra), por peso de rareza
+  for(let i=0;i<5;i++){
+    const s=weightedPick(pool)|| (G.stickers[0]);
+    if(!s)break;
+    wasNew.push(!(u.inventory[s.id]>0)&&!u.pasted[s.id]);
+    u.inventory[s.id]=(u.inventory[s.id]||0)+1;drops.push(s);
+  }
+  // posible EXTRA como 6ª figurita (probabilidad baja, máximo uno)
+  const EXTRA_CHANCE=0.12;
+  const ex=extraPool();
+  if(ex.length && Math.random()<EXTRA_CHANCE){
+    const s=weightedPick(ex);
+    if(s){wasNew.push(!(u.inventory[s.id]>0)&&!u.pasted[s.id]);u.inventory[s.id]=(u.inventory[s.id]||0)+1;drops.push(s);}
+  }
+  saveProfileSoon();
   const flash=el(`<div class="pack-flash"></div>`);document.body.appendChild(flash);
-  setTimeout(()=>{flash.remove();const r=el(`<div class="reveal"><h3>¡Tus 5 figuritas!</h3></div>`);const cards=el(`<div class="reveal-cards"></div>`);drops.forEach((s,i)=>cards.appendChild(el(`<div class="reveal-card ${rclass(s)} ${glows(s)?'shine-fx glow-frame':''} ${wasNew[i]?'new':''}">${figFace(s)}<div class="rlabel">#${s.num} · ${RAR[s.rarity].label}</div></div>`)));r.appendChild(cards);const c=el(`<button class="btn gold" style="max-width:220px">Genial</button>`);c.onclick=()=>{r.remove();render();};r.appendChild(c);document.body.appendChild(r);},1000);
+  setTimeout(()=>{flash.remove();
+    const gotExtra=drops.some(d=>d.rarity==="extra");
+    const r=el(`<div class="reveal"><h3>${gotExtra?"¡Sobre con EXTRA! ✨":"¡Tus figuritas!"}</h3></div>`);
+    const cards=el(`<div class="reveal-cards"></div>`);
+    drops.forEach((s,i)=>cards.appendChild(el(`<div class="reveal-card ${rclass(s)} ${glows(s)?(s.rarity==='extra'?'shine-extra':'shine-escudo')+' glow-frame':''} ${wasNew[i]?'new':''}">${figFace(s)}<div class="rlabel">#${s.num} · ${RAR[s.rarity].label}</div></div>`)));
+    r.appendChild(cards);const c=el(`<button class="btn gold" style="max-width:220px">Genial</button>`);c.onclick=()=>{r.remove();render();};r.appendChild(c);document.body.appendChild(r);},1000);
 }
 function renderRetos(screen){screen.appendChild(secHead("Cambian cada semana",T("nav_retos")));const body=el(`<div class="scroll-body"></div>`);if(!G.retos.length){body.appendChild(el(`<div class="empty-note">No hay retos activos.</div>`));}G.retos.forEach(r=>{body.appendChild(el(`<div class="reto-card"><div class="wk">${r.week}</div><h3>${r.title}</h3><p>${r.desc}</p><div class="reward">🎁 ${r.reward}</div></div>`));body.appendChild(el(`<div class="sp"></div>`));});screen.appendChild(body);}
 function renderConfig(screen){const u=user();screen.appendChild(secHead("Tu cuenta",T("nav_config")));const body=el(`<div class="scroll-body"></div>`);body.appendChild(el(`<div class="panel"><h3>Sesión</h3><p>Conectado como <b style="color:var(--gold)">${u.username}</b></p><p>Sueltas: ${totalQty(u)} · Pegadas: ${Object.keys(u.pasted).length} · Sobres: ${u.packs.length}</p></div>`));const out=el(`<button class="btn danger">Cerrar sesión</button>`);out.onclick=async()=>{await sb.auth.signOut();CUR=null;authMode="login";render();};body.appendChild(out);screen.appendChild(body);}
+function renderPerfil(screen){
+  const u=user();screen.appendChild(secHead(`Jugador: ${u.username}`,"Mi perfil"));
+  const body=el(`<div class="scroll-body"></div>`);
+  const totalFigs=G.stickers.length;
+  const pegadas=Object.keys(u.pasted).filter(id=>G.stickers.some(s=>s.id===id)).length;
+  // repetidas = suma de (cantidad-1) por cada figurita con 2 o más
+  let repetidas=0;for(const id in u.inventory){if(u.inventory[id]>1)repetidas+=u.inventory[id]-1;}
+  const pct=totalFigs?Math.round(pegadas/totalFigs*100):0;
+  body.appendChild(el(`<div class="panel"><h3>Progreso del álbum</h3>
+    <div class="prog-big">${pct}%<span> completado</span></div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+    <div class="stat-row"><div class="stat"><div class="sv">${pegadas}/${totalFigs}</div><div class="sl">Pegadas</div></div>
+      <div class="stat"><div class="sv">${repetidas}</div><div class="sl">Repetidas</div></div>
+      <div class="stat"><div class="sv">${totalQty(u)}</div><div class="sl">Sueltas</div></div></div>
+  </div>`));
+  body.appendChild(el(`<div class="panel"><h3>Actividad</h3>
+    <div class="stat-row"><div class="stat"><div class="sv">${u.opened||0}</div><div class="sl">Sobres abiertos</div></div>
+      <div class="stat"><div class="sv">${u.trades||0}</div><div class="sl">Intercambios</div></div>
+      <div class="stat"><div class="sv">${u.packs.length}</div><div class="sl">Sobres sin abrir</div></div></div>
+  </div>`));
+  // progreso por equipo
+  const teamBox=el(`<div class="panel"><h3>Por equipo</h3><div class="sp"></div></div>`);
+  G.teams.forEach(t=>{const figs=G.stickers.filter(s=>s.team===t.id);const tot=figs.length;const don=figs.filter(s=>u.pasted[s.id]).length;const p=tot?Math.round(don/tot*100):0;
+    teamBox.appendChild(el(`<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>${t.name}</span><span style="color:var(--gold);font-weight:700">${don}/${tot}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${p}%"></div></div></div>`));
+  });
+  body.appendChild(teamBox);
+  screen.appendChild(body);
+}
 
 function openAdminLogin(){
   if(isAdmin){view="admin";render();return;}
@@ -626,32 +742,66 @@ function renderAdmin(screen){
 function rarOptions(sel){return RAR_KEYS.map(k=>`<option value="${k}" ${sel===k?'selected':''}>${RAR[k].label}</option>`).join("");}
 function adminFiguritas(){
   const box=el(`<div></div>`);
-  const add=el(`<div class="panel"><h3>Crear figurita</h3><label class="fld">Nombre</label><input id="fn" placeholder="Ej: Jugador 11"><div class="sp"></div><div class="row"><div style="flex:1"><label class="fld">Número</label><input id="fnum" type="number" placeholder="11"></div><div style="flex:1"><label class="fld">Equipo</label><select id="ft"></select></div></div><div class="sp"></div><label class="fld">Rareza</label><select id="frar">${rarOptions("comun")}</select><div class="sp"></div><div class="toggle" id="fwide"><div class="tk"></div><div class="tl">Figurita horizontal (acostada, 2 espacios)</div></div><div class="sp"></div><div class="toggle on" id="fpeg"><div class="tk"></div><div class="tl">Pegable en el álbum</div></div><div class="sp"></div><label class="fld">Imagen (opcional)</label><input id="fimg" type="file" accept="image/*"><div class="sp"></div><button class="btn gold" id="fa">Agregar figurita</button></div>`);
+  const add=el(`<div class="panel"><h3>Crear figurita</h3><label class="fld">Nombre</label><input id="fn" placeholder="Ej: Jugador 11"><div class="sp"></div><div class="row"><div style="flex:1"><label class="fld">Número</label><input id="fnum" type="number" placeholder="11"></div><div style="flex:1"><label class="fld">Equipo</label><select id="ft"></select></div></div><div class="sp"></div><label class="fld">Rareza</label><select id="frar">${rarOptions(figForm.rarity)}</select><div class="sp"></div><div class="toggle ${figForm.wide?'on':''}" id="fwide"><div class="tk"></div><div class="tl">Figurita horizontal (acostada, 2 espacios)</div></div><div class="sp"></div><div class="toggle ${figForm.placeable?'on':''}" id="fpeg"><div class="tk"></div><div class="tl">Pegable en el álbum</div></div><div class="sp"></div><div class="toggle ${figForm.inPack?'on':''}" id="finp"><div class="tk"></div><div class="tl">Aparece en sobres</div></div><div class="sp"></div><label class="fld">Imagen (opcional)</label><input id="fimg" type="file" accept="image/*"><div class="sp"></div><button class="btn gold" id="fa">Agregar figurita</button></div>`);
   const ts=add.querySelector("#ft");G.teams.forEach(t=>ts.appendChild(el(`<option value="${t.id}">${t.name}</option>`)));
-  let fwide=false,fpeg=true;
+  if(figForm.team)ts.value=figForm.team;
+  let fwide=figForm.wide,fpeg=figForm.placeable,finp=figForm.inPack;
   add.querySelector("#fwide").onclick=function(){fwide=!fwide;this.classList.toggle("on",fwide);};
   add.querySelector("#fpeg").onclick=function(){fpeg=!fpeg;this.classList.toggle("on",fpeg);};
+  add.querySelector("#finp").onclick=function(){finp=!finp;this.classList.toggle("on",finp);};
   add.querySelector("#fa").onclick=async()=>{const name=$("#fn").value.trim()||"Sin nombre",num=parseInt($("#fnum").value)||(G.stickers.length+1),team=ts.value,rar=$("#frar").value,f=$("#fimg").files[0];
     let img=null,ratio=null;if(f){img=await uploadImage(f);ratio=uploadImage.lastRatio;}
     const id="S"+Date.now();
-    const rec={id,num,name,team,img,rarity:rar,wide:fwide,placeable:fpeg,ratio};
-    const {error}=await sb.from("stickers").insert(rec);
+    const rec={id,num,name,team,img,rarity:rar,wide:fwide,placeable:fpeg,inPack:finp,ratio};
+    const {error}=await sb.from("stickers").insert({id,num,name,team,img,rarity:rar,wide:fwide,placeable:fpeg,in_pack:finp,ratio});
     if(error){toast("Error al crear");return;}
-    G.stickers.push(rec);toast("Figurita creada");render();};
-  box.appendChild(add);box.appendChild(el(`<p class="hero-line">Figuritas (${G.stickers.length})</p>`));
-  G.stickers.slice().sort((a,b)=>a.num-b.num).forEach(s=>{const it=el(`<div class="adm-item ${rclass(s)}"><div class="thumb">${s.img?`<img src="${s.img}">`:`#${s.num}`}</div><div class="meta"><div class="t">${s.name} ${s.wide?'↔':''}</div><div class="s"><span class="rar-dot"></span>#${s.num} · ${s.team} · ${RAR[s.rarity].label}${s.rarity==='extra'?(s.placeable===false?' · NO pegable':' · pegable'):''}</div></div><button class="btn ghost sm edit">Editar</button><button class="btn danger sm del">✕</button></div>`);it.querySelector(".del").onclick=async()=>{await sb.from("stickers").delete().eq("id",s.id);G.stickers=G.stickers.filter(x=>x.id!==s.id);toast("Borrada");render();};it.querySelector(".edit").onclick=()=>editSticker(s);box.appendChild(it);});
+    G.stickers.push(rec);
+    // recordar opciones para la próxima
+    figForm.rarity=rar;figForm.wide=fwide;figForm.placeable=fpeg;figForm.inPack=finp;figForm.team=team;
+    toast("Figurita creada");render();};
+  box.appendChild(add);
+
+  // ----- filtros -----
+  const teamOpts=`<option value="todos">Todos los equipos</option>`+G.teams.map(t=>`<option value="${t.id}" ${admFilter.team===t.id?'selected':''}>${t.name}</option>`).join("");
+  const rarOpts=`<option value="todas">Todas las rarezas</option>`+RAR_KEYS.map(k=>`<option value="${k}" ${admFilter.rar===k?'selected':''}>${RAR[k].label}</option>`).join("");
+  const fbar=el(`<div class="panel" style="padding:12px"><div class="row"><select id="afr" style="flex:1">${rarOpts}</select><select id="aft" style="flex:1">${teamOpts}</select></div><div class="sp"></div><input id="afq" placeholder="Buscar por nombre o número" value="${admFilter.q}"></div>`);
+  fbar.querySelector("#afr").onchange=e=>{admFilter.rar=e.target.value;render();};
+  fbar.querySelector("#aft").onchange=e=>{admFilter.team=e.target.value;render();};
+  fbar.querySelector("#afq").oninput=e=>{admFilter.q=e.target.value;};
+  fbar.querySelector("#afq").onkeydown=e=>{if(e.key==="Enter")render();};
+  box.appendChild(fbar);
+
+  // ----- lista filtrada y ordenada por posición de álbum -----
+  let list=G.stickers.slice();
+  if(admFilter.rar!=="todas")list=list.filter(s=>s.rarity===admFilter.rar);
+  if(admFilter.team!=="todos")list=list.filter(s=>s.team===admFilter.team);
+  if(admFilter.q.trim()){const q=admFilter.q.trim().toLowerCase();list=list.filter(s=>(s.name||"").toLowerCase().includes(q)||String(s.num)===q);}
+  list.sort(albumOrder);
+  box.appendChild(el(`<p class="hero-line">Figuritas (${list.length}${list.length!==G.stickers.length?` de ${G.stickers.length}`:''})</p>`));
+  list.forEach(s=>{const it=el(`<div class="adm-item ${rclass(s)}"><div class="thumb">${s.img?`<img src="${s.img}">`:`#${s.num}`}</div><div class="meta"><div class="t">${s.name} ${s.wide?'↔':''}</div><div class="s"><span class="rar-dot"></span>#${s.num} · ${teamName(s.team)} · ${RAR[s.rarity].label}${s.inPack===false?' · sin sobres':''}</div></div><button class="btn ghost sm edit">Editar</button><button class="btn danger sm del">✕</button></div>`);it.querySelector(".del").onclick=async()=>{await sb.from("stickers").delete().eq("id",s.id);G.stickers=G.stickers.filter(x=>x.id!==s.id);toast("Borrada");render();};it.querySelector(".edit").onclick=()=>editSticker(s);box.appendChild(it);});
   return box;
+}
+function teamName(id){const t=G.teams.find(x=>x.id===id);return t?t.name:id;}
+// orden por posición en el álbum: primero por equipo (orden de G.teams), luego por número
+function albumOrder(a,b){
+  const ta=G.teams.findIndex(t=>t.id===a.team),tb=G.teams.findIndex(t=>t.id===b.team);
+  if(ta!==tb)return ta-tb;
+  return (a.num||0)-(b.num||0);
 }
 function editSticker(s){
   const bg=el(`<div class="modal-bg"></div>`);
-  const m=el(`<div class="modal"><h3>Editar figurita</h3><div class="stack"><div><label class="fld">Nombre</label><input id="en" value="${s.name}"></div><div class="row"><div style="flex:1"><label class="fld">Número</label><input id="enum" type="number" value="${s.num}"></div><div style="flex:1"><label class="fld">Rareza</label><select id="er">${rarOptions(s.rarity)}</select></div></div><div class="toggle ${s.wide?'on':''}" id="ewide"><div class="tk"></div><div class="tl">Horizontal (2 espacios)</div></div><div class="toggle ${s.placeable!==false?'on':''}" id="epeg"><div class="tk"></div><div class="tl">Pegable en el álbum</div></div><div><label class="fld">Cambiar imagen</label><input id="ei" type="file" accept="image/*"></div><button class="btn gold" id="es">Guardar</button><button class="btn ghost" id="ec">Cancelar</button></div></div>`);
-  let ewide=s.wide,epeg=s.placeable!==false;
+  const m=el(`<div class="modal"><h3>Editar figurita</h3><div class="stack"><div><label class="fld">Nombre</label><input id="en" value="${s.name}"></div><div class="row"><div style="flex:1"><label class="fld">Número</label><input id="enum" type="number" value="${s.num}"></div><div style="flex:1"><label class="fld">Rareza</label><select id="er">${rarOptions(s.rarity)}</select></div></div><div class="toggle ${s.wide?'on':''}" id="ewide"><div class="tk"></div><div class="tl">Horizontal (2 espacios)</div></div><div class="toggle ${s.placeable!==false?'on':''}" id="epeg"><div class="tk"></div><div class="tl">Pegable en el álbum</div></div><div class="toggle ${s.inPack!==false?'on':''}" id="einp"><div class="tk"></div><div class="tl">Aparece en sobres</div></div><div><label class="fld">Cambiar imagen</label><input id="ei" type="file" accept="image/*"></div><button class="btn gold" id="es">Guardar</button><button class="btn ghost" id="ec">Cancelar</button></div></div>`);
+  let ewide=s.wide,epeg=s.placeable!==false,einp=s.inPack!==false;
   m.querySelector("#ewide").onclick=function(){ewide=!ewide;this.classList.toggle("on",ewide);};
   m.querySelector("#epeg").onclick=function(){epeg=!epeg;this.classList.toggle("on",epeg);};
-  m.querySelector("#es").onclick=async()=>{s.name=$("#en").value.trim()||s.name;s.num=parseInt($("#enum").value)||s.num;s.rarity=$("#er").value;s.wide=ewide;s.placeable=epeg;const f=$("#ei").files[0];
+  m.querySelector("#einp").onclick=function(){einp=!einp;this.classList.toggle("on",einp);};
+  m.querySelector("#es").onclick=async()=>{s.name=$("#en").value.trim()||s.name;s.num=parseInt($("#enum").value)||s.num;s.rarity=$("#er").value;s.wide=ewide;s.placeable=epeg;s.inPack=einp;const f=$("#ei").files[0];
     if(f){const url=await uploadImage(f);if(url){s.img=url;s.ratio=uploadImage.lastRatio;}}
-    await sb.from("stickers").update({num:s.num,name:s.name,rarity:s.rarity,wide:s.wide,placeable:s.placeable,img:s.img,ratio:s.ratio}).eq("id",s.id);
-    bg.remove();toast("Guardado");render();};
+    await sb.from("stickers").update({num:s.num,name:s.name,rarity:s.rarity,wide:s.wide,placeable:s.placeable,in_pack:s.inPack,img:s.img,ratio:s.ratio}).eq("id",s.id);
+    const sc=document.querySelector(".scroll-body");const pos=sc?sc.scrollTop:0;
+    bg.remove();toast("Guardado");render();
+    requestAnimationFrame(()=>{const ns=document.querySelector(".scroll-body");if(ns)ns.scrollTop=pos;});
+  };
   m.querySelector("#ec").onclick=()=>bg.remove();bg.appendChild(m);document.body.appendChild(bg);
 }
 function adminAlbum(){
@@ -784,7 +934,7 @@ async function loadGlobal(){
   ]);
   G.config = Object.assign(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), (cfg.data&&cfg.data.data)||{});
   if(!G.config.text) G.config.text=JSON.parse(JSON.stringify(DEFAULT_CONFIG.text));
-  G.stickers = (st.data||[]).map(s=>({id:s.id,num:s.num,name:s.name,team:s.team,img:s.img,rarity:s.rarity,wide:s.wide,placeable:s.placeable,ratio:s.ratio}));
+  G.stickers = (st.data||[]).map(s=>({id:s.id,num:s.num,name:s.name,team:s.team,img:s.img,rarity:s.rarity,wide:s.wide,placeable:s.placeable,inPack:s.in_pack,ratio:s.ratio}));
   G.teams = (tm.data||[]).map(t=>({id:t.id,name:t.name,crest:t.crest,bg:t.bg}));
   G.codes = (cd.data||[]).map(c=>({code:c.code,type:c.type,amount:c.amount}));
   G.retos = (rt.data||[]).map(r=>({id:r.id,week:r.week,title:r.title,desc:r.descr,reward:r.reward}));
@@ -806,7 +956,7 @@ async function loadProfile(){
   CUR_PROFILE=data;
   isAdmin=!!data.is_admin;
   CUR=data.username||"usuario";
-  G.users={}; G.users[CUR]={username:CUR,inventory:data.inventory||{},pasted:data.pasted||{},packs:data.packs||[],lastDaily:Number(data.last_daily)||0,codesUsed:data.codes_used||[]};
+  G.users={}; G.users[CUR]={username:CUR,inventory:data.inventory||{},pasted:data.pasted||{},packs:data.packs||[],lastDaily:Number(data.last_daily)||0,codesUsed:data.codes_used||[],opened:data.opened||0,trades:data.trades_made||0};
 }
 
 // --- guardar progreso del usuario (con debounce) ---
@@ -815,7 +965,7 @@ function saveProfileSoon(){
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
     const u=G.users[CUR];if(!u)return;
-    await sb.from("profiles").update({inventory:u.inventory,pasted:u.pasted,packs:u.packs,last_daily:u.lastDaily,codes_used:u.codesUsed}).eq("id",SESSION.user.id);
+    await sb.from("profiles").update({inventory:u.inventory,pasted:u.pasted,packs:u.packs,last_daily:u.lastDaily,codes_used:u.codesUsed,opened:u.opened||0,trades_made:u.trades||0}).eq("id",SESSION.user.id);
   },600);
 }
 
@@ -866,12 +1016,17 @@ async function boot(){
   render();
 }
 // cuando el usuario inicia sesión (login/registro) o la cierra
+let _firstAuth=true;
 sb.auth.onAuthStateChange(async(ev,s)=>{
   SESSION=s;
   if(s){
-    try{await loadGlobal();}catch(_){}
-    try{await loadProfile();view="home";}catch(e){console.error(e);}
-    clearBootMsg();render();
+    // solo recargar perfil/contenido en el primer login; eventos posteriores
+    // (refresh de token, foco de ventana) no deben resetear la vista
+    if(_firstAuth || !CUR){
+      try{await loadGlobal();}catch(_){}
+      try{await loadProfile();view="home";}catch(e){console.error(e);}
+      _firstAuth=false;clearBootMsg();render();
+    }
   }else{
     CUR=null;render();
   }
