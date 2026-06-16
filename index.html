@@ -53,7 +53,12 @@ body.mode-mobile #app{max-width:440px;border-left:1px solid var(--line);border-r
 .tile .badge{position:absolute;top:11px;right:11px;background:var(--cyan);color:var(--cyan-ink);font-weight:800;font-size:12px;min-width:24px;height:24px;border-radius:8px;display:grid;place-items:center;padding:0 6px;box-shadow:0 4px 10px rgba(47,209,198,.35);z-index:3}
 @media(max-width:760px){.home-row{flex-wrap:wrap}.tile{flex:1 1 40%;min-height:150px}.tile .art{width:64px;height:64px;font-size:32px}.tile .label{font-size:22px}}
 
-.bottomnav{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:8px;align-items:center;background:linear-gradient(180deg,rgba(20,12,32,.6),rgba(14,10,20,.96));backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:8px 6px calc(8px + env(safe-area-inset-bottom));flex:none}
+.bottomnav{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:8px;align-items:center;background:linear-gradient(180deg,rgba(20,12,32,.6),rgba(14,10,20,.96));backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:8px 6px calc(8px + env(safe-area-inset-bottom));flex:none;overflow-x:auto;scrollbar-width:none}
+.bottomnav::-webkit-scrollbar{display:none}
+.nav-btn{flex:none}
+body.mode-mobile .bottomnav{justify-content:space-between;gap:2px;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+body.mode-mobile .nav-btn{padding:5px 7px;font-size:9px}
+body.mode-mobile .nav-btn .ico{font-size:18px}
 .nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:10px;font-weight:600;padding:6px 18px;border-radius:12px}
 .nav-btn .ico{font-size:20px;line-height:1}
 .nav-btn.active{color:var(--gold)}
@@ -198,7 +203,7 @@ body.mode-mobile .page.single{max-width:100%}
 /* sobre GRANDE: imagen arriba, texto debajo (sin tapar), con destellos */
 .envelope.big{width:200px;height:auto;padding:0;justify-content:flex-start;background:linear-gradient(160deg,var(--maroon-2),var(--maroon))}
 .envelope.big .env-imgwrap{width:100%;aspect-ratio:1/1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:14px 14px 0 0;background:rgba(0,0,0,.25)}
-.envelope.big .envimg{position:static;width:100%;height:100%;object-fit:cover}
+.envelope.big .envimg{position:static;width:100%;height:100%;object-fit:contain}
 .envelope.big .env-emoji{font-size:64px}
 .envelope.big .env-cap{width:100%;padding:10px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:3px;z-index:2}
 .envelope.big .env-cap .ttl{font-size:20px}
@@ -284,6 +289,10 @@ body.mode-mobile .book-area{padding:0 4px}
 .sugg{padding:10px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);margin-bottom:7px;display:flex;flex-direction:column;gap:3px;position:relative}
 .sugg .st{font-size:13px}.sugg .sm2{font-size:10px;color:var(--muted)}
 .sugg .sdel{position:absolute;top:8px;right:8px}
+.offer .card.ya-tengo{opacity:.5}
+.tengo-tag{position:absolute;top:2px;right:2px;background:#46e08a;color:#0a1a10;font-size:8px;font-weight:800;padding:1px 4px;border-radius:5px;z-index:6}
+.idx-team.has-paste{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.idx-team .paste-badge{font-size:9px;color:var(--gold);font-weight:700;margin-top:3px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -425,6 +434,14 @@ function renderAuth(){
       const {error}=await sb.auth.signInWithPassword({email:toEmail(u),password:p});
       if(error){$("#le").textContent="Usuario o contraseña incorrectos.";$("#lbtn").textContent="Entrar";}
     };
+    const forgot=el(`<div class="switch" style="margin-top:10px;font-size:12px">¿Olvidaste tu contraseña?</div>`);
+    forgot.onclick=()=>{
+      const wa=G.config.waNumber||"";
+      const msg=wa?`Escribime al WhatsApp ${wa} y te restablezco la contraseña.`:`Escribile al administrador por WhatsApp y te restablece la contraseña.`;
+      if(wa){const link="https://wa.me/"+wa.replace(/[^0-9]/g,"")+"?text="+encodeURIComponent("Hola, olvidé mi contraseña del álbum. Mi usuario es: ");window.open(link,"_blank");}
+      else alert(msg);
+    };
+    card.appendChild(forgot);
   }else{
     card.appendChild(el(`<div class="stack"><div><label class="fld">Elegí un usuario</label><input id="ru" placeholder="nombre de usuario"></div><div><label class="fld">Contraseña</label><input id="rp" type="password" placeholder="creá una clave"></div><div class="err" id="re"></div><button class="btn gold" id="rbtn">Crear cuenta</button></div>`));
     card.querySelector("#rbtn").onclick=async()=>{
@@ -606,8 +623,8 @@ function renderAlbum(screen){
     const body=el(`<div class="scroll-body"></div>`);
     body.appendChild(el(`<p class="hero-line">Tocá un equipo para abrir su doble página.</p>`));
     const idx=el(`<div class="album-index"></div>`);
-    G.teams.forEach((t,i)=>{let total=0,done=0;for(let pos=1;pos<=G.config.slotsPerTeam;pos++){const s=stickerAtPos(t.id,pos);if(s){total++;if(u.pasted[s.id])done++;}}
-      const c=el(`<button class="idx-team"><div class="crest">${crestFace(t)}</div><div class="tn">${t.name}</div><div class="prog">${done}/${total||G.config.slotsPerTeam}</div></button>`);
+    G.teams.forEach((t,i)=>{let total=0,done=0,pegables=0;for(let pos=1;pos<=G.config.slotsPerTeam;pos++){const s=stickerAtPos(t.id,pos);if(s){total++;if(u.pasted[s.id])done++;else if((u.inventory[s.id]||0)>0&&canPaste(s))pegables++;}}
+      const c=el(`<button class="idx-team ${pegables>0?'has-paste':''}"><div class="crest">${crestFace(t)}</div><div class="tn">${t.name}</div><div class="prog">${done}/${total||G.config.slotsPerTeam}</div>${pegables>0?`<div class="paste-badge">📌 ${pegables} para pegar</div>`:''}</button>`);
       c.onclick=()=>{bookPage=(viewMode==="mobile")?(i*2+1):(i+1);albumIndexOpen=false;render();};idx.appendChild(c);});
     body.appendChild(idx);const close=el(`<button class="btn ghost" style="margin-top:14px">Volver al álbum</button>`);close.onclick=()=>{albumIndexOpen=false;render();};body.appendChild(close);screen.appendChild(body);return;
   }
@@ -686,13 +703,15 @@ function renderTrade(screen){
   tradeOffers.forEach(o=>{
     const giveIds=o.giveIds&&o.giveIds.length?o.giveIds:[o.give];
     const wsk=G.stickers.find(x=>x.id===o.want),mine=(o.fromUser&&SESSION&&o.fromUser===SESSION.user.id)||o.from===u.username;
-    const tengo=(u.inventory[o.want]||0)>0;
-    const givesHtml=giveIds.map(gid=>{const gsk=G.stickers.find(x=>x.id===gid);return `<div class="card sm ${shineClass(gsk)}" style="${gsk?rarStyle(gsk.rarity):''}">${figFace(gsk)}</div>`;}).join("");
+    const tengoPedida=(u.inventory[o.want]||0)>0;
+    const wName=wsk?`#${wsk.num} ${wsk.name}`:'?';
+    const givesHtml=giveIds.map(gid=>{const gsk=G.stickers.find(x=>x.id===gid);const yaLaTengo=(u.inventory[gid]||0)>0||!!u.pasted[gid];return `<div class="card sm ${shineClass(gsk)} ${yaLaTengo?'ya-tengo':''}" style="${gsk?rarStyle(gsk.rarity):''}" title="${yaLaTengo?'Ya la tenés':'Te falta'}">${figFace(gsk)}${yaLaTengo?'<span class="tengo-tag">ya</span>':''}</div>`;}).join("");
+    const ofreceFaltante=giveIds.some(gid=>!((u.inventory[gid]||0)>0||u.pasted[gid]));
     const card=el(`<div class="offer"><div class="who">${mine?"Tu oferta":"De "+o.from}</div><div class="deal"><div class="side"><div class="lab">Da ${giveIds.length>1?`(${giveIds.length})`:''}</div><div class="give-cards">${givesHtml}</div></div><div class="arrow-mid">⇄</div><div class="side"><div class="lab">Quiere</div><div class="card ${shineClass(wsk)}" style="${wsk?rarStyle(wsk.rarity):''}">${figFace(wsk)}</div></div></div>
-      ${!mine?`<div class="tradehint ${tengo?'ok':'no'}">${tengo?`✓ Tenés #${wsk?wsk.num:'?'} para dar`:`✗ No tenés #${wsk?wsk.num:'?'}`}</div>`:''}
-      <div class="sp"></div>${mine?`<button class="btn ghost sm cancel">Cancelar oferta</button>`:`<button class="btn sm accept" ${tengo?'':'disabled'}>Aceptar (doy #${wsk?wsk.num:'?'})</button>`}</div>`);
+      ${!mine?`<div class="tradehint ${tengoPedida?'ok':'no'}">${tengoPedida?`✓ Tenés ${wName} para dar`:`✗ No tenés ${wName}`}</div>${ofreceFaltante?`<div class="tradehint ok" style="margin-top:2px">★ Te ofrece una que te falta</div>`:''}`:''}
+      <div class="sp"></div>${mine?`<button class="btn ghost sm cancel">Cancelar oferta</button>`:`<button class="btn sm accept" ${tengoPedida?'':'disabled'}>Aceptar (doy ${wName})</button>`}</div>`);
     if(mine)card.querySelector(".cancel").onclick=async()=>{if(o.id)await sb.from("trades").delete().eq("id",o.id);tradeOffers=tradeOffers.filter(x=>x.id!==o.id);render();};
-    else{const ab=card.querySelector(".accept");if(ab&&tengo)ab.onclick=async()=>{
+    else{const ab=card.querySelector(".accept");if(ab&&tengoPedida)ab.onclick=async()=>{
       ab.disabled=true;ab.textContent="Procesando...";
       const {data,error}=await sb.rpc("accept_trade",{p_trade_id:o.id});
       if(error){toast("Error en el intercambio");ab.disabled=false;return;}
@@ -717,7 +736,12 @@ function renderNovedades(screen){
   const np=el(`<div class="panel"><h3>Notificaciones ${unread?`<span class="badge-inline">${unread}</span>`:''}</h3><div class="sp"></div></div>`);
   if(!notifications.length)np.appendChild(el(`<div class="empty-note" style="margin:0">No tenés notificaciones.</div>`));
   notifications.forEach(n=>{const it=el(`<div class="noti ${n.read?'':'unread'}"><div class="nt">${n.text}</div><div class="nd">${timeAgo(n.created_at)}</div></div>`);np.appendChild(it);});
-  if(notifications.length){const clr=el(`<button class="btn ghost sm" style="margin-top:10px">Marcar todas leídas</button>`);clr.onclick=async()=>{await sb.from("notifications").update({read:true}).eq("user_id",SESSION.user.id);await loadNotifications();render();};np.appendChild(clr);}
+  if(notifications.length){
+    const row=el(`<div class="row" style="margin-top:10px;gap:8px"></div>`);
+    const clr=el(`<button class="btn ghost sm" style="flex:1">Marcar leídas</button>`);clr.onclick=async()=>{await sb.from("notifications").update({read:true}).eq("user_id",SESSION.user.id);await loadNotifications();render();};
+    const delr=el(`<button class="btn danger sm" style="flex:1">Borrar leídas</button>`);delr.onclick=async()=>{await sb.from("notifications").delete().eq("user_id",SESSION.user.id).eq("read",true);await loadNotifications();render();};
+    row.appendChild(clr);row.appendChild(delr);np.appendChild(row);
+  }
   body.appendChild(np);
   // ---- Sugerencias ----
   const sp=el(`<div class="panel"><h3>Sugerencias</h3><p>Dejá tu idea para mejorar el álbum. La ven todos.</p><div class="sp"></div><textarea id="sgt" rows="2" placeholder="Tu sugerencia..." style="width:100%;resize:vertical"></textarea><div class="sp"></div><button class="btn gold sm" id="sgb">Publicar sugerencia</button></div>`);
@@ -835,15 +859,18 @@ function renderPerfil(screen){
   const body=el(`<div class="scroll-body"></div>`);
   const totalFigs=G.stickers.length;
   const pegadas=Object.keys(u.pasted).filter(id=>G.stickers.some(s=>s.id===id)).length;
-  // repetidas = suma de (cantidad-1) por cada figurita con 2 o más
-  let repetidas=0;for(const id in u.inventory){if(u.inventory[id]>1)repetidas+=u.inventory[id]-1;}
+  // repetidas = total de copias de las figuritas de las que tenés 2 o más
+  // (ej: #1 ×2 y #3 ×2  ->  2+2 = 4)
+  let repetidas=0;for(const id in u.inventory){const q=u.inventory[id]||0;if(q>1)repetidas+=q;}
+  // sin pegar = figuritas distintas que tenés en mano pero todavía no pegaste
+  let sinPegar=0;for(const id in u.inventory){if((u.inventory[id]||0)>0 && !u.pasted[id])sinPegar++;}
   const pct=totalFigs?Math.round(pegadas/totalFigs*100):0;
   body.appendChild(el(`<div class="panel"><h3>Progreso del álbum</h3>
     <div class="prog-big">${pct}%<span> completado</span></div>
     <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
     <div class="stat-row"><div class="stat"><div class="sv">${pegadas}/${totalFigs}</div><div class="sl">Pegadas</div></div>
       <div class="stat"><div class="sv">${repetidas}</div><div class="sl">Repetidas</div></div>
-      <div class="stat"><div class="sv">${totalQty(u)}</div><div class="sl">Sueltas</div></div></div>
+      <div class="stat"><div class="sv">${sinPegar}</div><div class="sl">Sin pegar</div></div></div>
   </div>`));
   body.appendChild(el(`<div class="panel"><h3>Actividad</h3>
     <div class="stat-row"><div class="stat"><div class="sv">${u.opened||0}</div><div class="sl">Sobres abiertos</div></div>
@@ -1044,6 +1071,9 @@ function adminSobres(){
 }
 function adminMarca(){
   const box=el(`<div></div>`);
+  const waP=el(`<div class="panel"><h3>WhatsApp para "olvidé mi contraseña"</h3><p>Número que aparece cuando alguien toca "¿Olvidaste tu contraseña?" en el login. Con código de país, ej: 5491122334455</p><div class="sp"></div><div class="row"><input id="wanum" value="${G.config.waNumber||''}" placeholder="5491122334455" style="flex:1"><button class="btn gold sm" id="wasave">Guardar</button></div></div>`);
+  waP.querySelector("#wasave").onclick=async()=>{G.config.waNumber=$("#wanum").value.trim();await saveConfig();toast("WhatsApp guardado");};
+  box.appendChild(waP);
   const logoP=el(`<div class="panel"><h3>Logo de la competición</h3><div class="sp"></div><div class="adm-item" style="margin:0"><div class="thumb">${G.config.logo?`<img src="${G.config.logo}">`:"🏆"}</div><div class="meta"><div class="t">Logo</div><div class="s">${G.config.logo?"Cargado":"Sin logo"}</div></div><label class="btn ghost sm" style="position:relative;overflow:hidden">Subir<input id="logoin" type="file" accept="image/*" style="position:absolute;inset:0;opacity:0"></label>${G.config.logo?`<button class="btn danger sm" id="logoclr">✕</button>`:""}</div></div>`);
   logoP.querySelector("#logoin").onchange=async e=>{const f=e.target.files[0];if(f){const url=await uploadImage(f);if(url){G.config.logo=url;await saveConfig();toast("Logo actualizado");render();}}};
   if(G.config.logo)logoP.querySelector("#logoclr").onclick=async()=>{G.config.logo=null;await saveConfig();render();};box.appendChild(logoP);
@@ -1089,11 +1119,12 @@ function adminUsuarios(){
     data.forEach(pr=>{
       const inv=pr.inventory||{},packs=pr.packs||[],pasted=pr.pasted||{};
       const q=Object.values(inv).reduce((a,b)=>a+b,0);
-      const it=el(`<div class="adm-item"><div class="thumb">👤</div><div class="meta"><div class="t">${pr.username||"(sin nombre)"} ${pr.is_admin?'· ADMIN':''}</div><div class="s">${q} sueltas · ${packs.length} sobres · ${Object.keys(pasted).length} pegadas</div></div><button class="btn gold sm give">+ Sobre</button><button class="btn ghost sm fig">+ Figurita</button><button class="btn ghost sm adm">${pr.is_admin?'Quitar admin':'Hacer admin'}</button><button class="btn ghost sm rst">Reset</button><button class="btn danger sm del">✕</button></div>`);
+      const it=el(`<div class="adm-item"><div class="thumb">👤</div><div class="meta"><div class="t">${pr.username||"(sin nombre)"} ${pr.is_admin?'· ADMIN':''}</div><div class="s">${q} sueltas · ${packs.length} sobres · ${Object.keys(pasted).length} pegadas</div></div><button class="btn gold sm give">+ Sobre</button><button class="btn ghost sm fig">+ Figurita</button><button class="btn ghost sm ren">Renombrar</button><button class="btn ghost sm adm">${pr.is_admin?'Quitar admin':'Hacer admin'}</button><button class="btn ghost sm rst">Reset</button><button class="btn danger sm del">✕</button></div>`);
       it.querySelector(".give").onclick=async()=>{const np=packs.concat(["PA"+Date.now()]);await sb.from("profiles").update({packs:np}).eq("id",pr.id);
         if(SESSION&&pr.id===SESSION.user.id){clearTimeout(saveTimer);G.users[CUR].packs=np;}
         await addNotiTo(pr.id,"Te regalaron un sobre");toast("Sobre dado");render();};
       it.querySelector(".fig").onclick=()=>giveStickerModal(pr,inv);
+      it.querySelector(".ren").onclick=async()=>{const nn=prompt("Nuevo nombre de usuario para "+pr.username,pr.username);if(!nn||!nn.trim())return;await sb.from("profiles").update({username:nn.trim()}).eq("id",pr.id);if(SESSION&&pr.id===SESSION.user.id)CUR=nn.trim();toast("Nombre cambiado");render();};
       it.querySelector(".adm").onclick=async()=>{await sb.from("profiles").update({is_admin:!pr.is_admin}).eq("id",pr.id);
         if(SESSION&&pr.id===SESSION.user.id){isAdmin=!pr.is_admin;}
         toast("Permisos actualizados");render();};
