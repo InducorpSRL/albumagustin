@@ -65,10 +65,7 @@ body.mode-mobile #app{max-width:440px;border-left:1px solid var(--line);border-r
 .r-comun{--rc:var(--r-comun)}.r-rara{--rc:var(--r-rara)}.r-ultra{--rc:var(--r-ultra)}.r-extra{--rc:var(--r-extra)}.r-escudo{--rc:var(--r-escudo)}
 .rar-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--rc,var(--r-comun));margin-right:5px;vertical-align:middle}
 @keyframes shine{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.shine-fx::before,.shine-extra::before,.shine-escudo::before{content:"";position:absolute;inset:0;z-index:4;pointer-events:none;background-size:200% 100%;background-repeat:no-repeat;animation:shine 3s linear infinite;mix-blend-mode:screen}
-.shine-fx::before{background-image:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.55) 48%,rgba(255,255,255,.9) 50%,rgba(255,255,255,.55) 52%,transparent 65%)}
-.shine-extra::before{background-image:linear-gradient(115deg,transparent 30%,rgba(255,225,130,.5) 45%,rgba(255,247,200,.95) 50%,rgba(255,210,90,.5) 55%,transparent 70%)}
-.shine-escudo::before{background-image:linear-gradient(115deg,transparent 30%,rgba(120,255,200,.45) 45%,rgba(220,255,240,.9) 50%,rgba(80,230,170,.45) 55%,transparent 70%)}
+.glowing::before{content:"";position:absolute;inset:0;z-index:4;pointer-events:none;background-size:200% 100%;background-repeat:no-repeat;animation:shine 3s linear infinite;mix-blend-mode:screen;background-image:linear-gradient(115deg,transparent 32%,color-mix(in srgb,var(--gc,#fff) 55%,transparent) 46%,var(--gc,#fff) 50%,color-mix(in srgb,var(--gc,#fff) 55%,transparent) 54%,transparent 68%)}
 .glow-frame{box-shadow:0 0 0 2px var(--rc) inset,0 0 14px color-mix(in srgb,var(--rc) 55%,transparent)}
 
 .coll-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
@@ -190,15 +187,28 @@ body.mode-mobile .page.single{max-width:100%}
 .reveal-card .ph{width:100%;height:100%;display:grid;place-items:center;background:var(--panel-2);font-size:22px;font-weight:800;color:var(--gold)}
 .reveal-card .rlabel{position:absolute;bottom:0;left:0;right:0;font-size:10px;text-align:center;padding:4px 2px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.85));font-weight:700;z-index:5}
 @media(max-width:680px){.reveal-card{width:108px}.reveal-cards{gap:10px}}
-.pack-shelf{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+.pack-shelf{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;justify-content:center}
 .envelope{width:118px;height:150px;border-radius:14px;position:relative;background:linear-gradient(160deg,var(--maroon-2),var(--maroon));border:1px solid var(--gold-2);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:12px;overflow:hidden;transition:transform .12s}
 .envelope:active{transform:scale(.95)}
 .envelope.hasimg{padding:0}
 .envelope .envimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
 .envelope .envtint{position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(0,0,0,.7));z-index:1}
-.envelope::before{content:"";position:absolute;top:0;left:0;right:0;height:54%;background:linear-gradient(180deg,rgba(255,255,255,.12),transparent);clip-path:polygon(0 0,100% 0,50% 100%);z-index:1}
 .envelope .ttl{font-family:var(--display);font-size:18px;color:var(--gold);z-index:2}
 .envelope .pl{font-size:9px;color:rgba(255,255,255,.75);z-index:2;text-align:center;padding:0 6px}
+/* sobre GRANDE: imagen arriba, texto debajo (sin tapar), con destellos */
+.envelope.big{width:200px;height:auto;padding:0;justify-content:flex-start;background:linear-gradient(160deg,var(--maroon-2),var(--maroon))}
+.envelope.big .env-imgwrap{width:100%;aspect-ratio:1/1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:14px 14px 0 0;background:rgba(0,0,0,.25)}
+.envelope.big .envimg{position:static;width:100%;height:100%;object-fit:cover}
+.envelope.big .env-emoji{font-size:64px}
+.envelope.big .env-cap{width:100%;padding:10px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:3px;z-index:2}
+.envelope.big .env-cap .ttl{font-size:20px}
+.envelope.big .env-cap .pl{font-size:10px}
+.envelope.big::before{display:none}
+.env-spark{position:absolute;width:10px;height:10px;z-index:3;pointer-events:none;background:radial-gradient(circle,#fff 0%,rgba(255,223,120,.9) 40%,transparent 70%);border-radius:50%;opacity:0;animation:sparkle 2.4s ease-in-out infinite}
+.env-spark.s1{top:12%;left:16%;animation-delay:0s}
+.env-spark.s2{top:24%;right:14%;animation-delay:.8s}
+.env-spark.s3{top:40%;left:50%;animation-delay:1.5s}
+@keyframes sparkle{0%,100%{opacity:0;transform:scale(.4)}45%{opacity:1;transform:scale(1.3)}60%{opacity:.6;transform:scale(1)}}
 .empty-note{text-align:center;color:var(--muted);font-size:13px;padding:30px 10px}
 
 .offer{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:11px}
@@ -259,15 +269,47 @@ body.editing [data-edit]:hover{background:rgba(47,209,198,.12)}
 body.mode-mobile .book.one{max-width:100%}
 body.mode-mobile .book-area{padding:0 4px}
 .sticker.pegada-gris .photo,.sticker.pegada-gris .ph{filter:grayscale(1) brightness(.7)}
+.give-pick{display:flex;flex-wrap:wrap;gap:6px}
+.give-chip{font-size:11px;padding:6px 9px;border-radius:9px;border:1px solid var(--line);background:var(--bg2);color:var(--muted)}
+.give-chip.on{border-color:var(--gold);color:var(--gold);background:color-mix(in srgb,var(--gold) 12%,transparent)}
+.give-chip .x{opacity:.6}
+.give-cards{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+.offer .card.sm{width:46px;height:60px}
+.tradehint{font-size:11px;font-weight:700;margin-top:8px;text-align:center}
+.tradehint.ok{color:#46e08a}.tradehint.no{color:#ff7a7a}
+.noti{padding:10px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);margin-bottom:7px}
+.noti.unread{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 8%,var(--bg2))}
+.noti .nt{font-size:13px}.noti .nd{font-size:10px;color:var(--muted);margin-top:2px}
+.badge-inline{display:inline-block;background:var(--gold);color:#1a1320;font-size:11px;font-weight:800;border-radius:99px;padding:1px 8px;margin-left:6px}
+.sugg{padding:10px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);margin-bottom:7px;display:flex;flex-direction:column;gap:3px;position:relative}
+.sugg .st{font-size:13px}.sugg .sm2{font-size:10px;color:var(--muted)}
+.sugg .sdel{position:absolute;top:8px;right:8px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div id="app"></div>
 <script>
-const RAR={comun:{label:"Común",cls:"r-comun"},rara:{label:"Rara",cls:"r-rara"},ultra:{label:"Ultra rara",cls:"r-ultra"},extra:{label:"Extra sticker",cls:"r-extra"},escudo:{label:"Escudo",cls:"r-escudo"}};
-const RAR_KEYS=["comun","rara","ultra","extra","escudo"];
-const GLOW=["extra","escudo"]; // rarezas que brillan
+// Rarezas por defecto. El admin puede editarlas (se guardan en G.config.rarities).
+const DEFAULT_RARITIES=[
+  {key:"comun",  label:"Común",       color:"#7c8aa0", weight:100, glow:false, glowColor:"#ffffff", isExtra:false},
+  {key:"rara",   label:"Rara",        color:"#4aa3ff", weight:35,  glow:false, glowColor:"#9ecbff", isExtra:false},
+  {key:"ultra",  label:"Ultra rara",  color:"#b46bff", weight:12,  glow:true,  glowColor:"#d9b3ff", isExtra:false},
+  {key:"escudo", label:"Escudo",      color:"#46e08a", weight:8,   glow:true,  glowColor:"#9bffcf", isExtra:false},
+  {key:"extra",  label:"Extra sticker",color:"#ffcf3a",weight:4,   glow:true,  glowColor:"#fff2c0", isExtra:true},
+];
+// devuelve la lista de rarezas vigente (config o defaults)
+function rarities(){return (G.config && G.config.rarities && G.config.rarities.length)?G.config.rarities:DEFAULT_RARITIES;}
+function rarDef(key){return rarities().find(r=>r.key===key)||rarities()[0]||DEFAULT_RARITIES[0];}
+function rarLabel(key){const d=rarDef(key);return d?d.label:key;}
+function rarColor(key){const d=rarDef(key);return d?d.color:"#7c8aa0";}
+function rarGlows(key){const d=rarDef(key);return !!(d&&d.glow);}
+function rarGlowColor(key){const d=rarDef(key);return (d&&d.glowColor)||"#ffffff";}
+function rarIsExtra(key){const d=rarDef(key);return !!(d&&d.isExtra);}
+// compatibilidad con código viejo
+const RAR=new Proxy({},{get:(_,k)=>({label:rarLabel(k),cls:""})});
+function RAR_KEYS_fn(){return rarities().map(r=>r.key);}
+Object.defineProperty(window,"RAR_KEYS",{get:RAR_KEYS_fn});
 
 const G={
   config:{title:"COPA",titleAccent:"DIGITAL",homeSub:"Tu álbum. Tus reglas. Pegá, intercambiá y completá.",logo:null,slotsPerTeam:20,
@@ -284,7 +326,7 @@ const G={
   teams:[{id:"EQA",name:"Equipo Rojo",crest:null,bg:null},{id:"EQB",name:"Equipo Azul",crest:null,bg:null},{id:"EQC",name:"Equipo Verde",crest:null,bg:null}],
   codes:[],retos:[],users:{}};
 let CUR=null,view="home",bookPage=0,pageDir=0,albumIndexOpen=false,tradeOffers=[],isAdmin=false,adminTab="figuritas",authMode="login",editing=false;
-let viewMode="desktop"; // "desktop" = 2 páginas por vista; "mobile" = 1 página por vista
+let viewMode=(typeof window!=="undefined" && window.innerWidth && window.innerWidth<760)?"mobile":"desktop"; // auto-detecta; el usuario puede cambiar en login
 // memoria del formulario de crear figurita (recuerda última elección)
 const figForm={rarity:"comun",wide:false,placeable:true,inPack:true,team:null};
 // filtros del panel admin de figuritas
@@ -315,15 +357,18 @@ function toast(m){const t=el(`<div class="toast">${m}</div>`);document.body.appe
 function totalQty(u){return Object.values(u.inventory).reduce((a,b)=>a+b,0);}
 function randSticker(){return G.stickers[Math.floor(Math.random()*G.stickers.length)];}
 function fileToDataURL(f,cb){const r=new FileReader();r.onload=()=>cb(r.result);r.readAsDataURL(f);}
-function rclass(s){return s&&RAR[s.rarity]?RAR[s.rarity].cls:"r-comun";}
-function glows(s){return s&&GLOW.includes(s.rarity);}
-function shineClass(s){if(!glows(s))return "";return (s.rarity==="extra"?"shine-extra":"shine-escudo")+" glow-frame";}
+function rclass(s){return "";} // ya no se usan clases de color; el color va por estilo
+function glows(s){return s&&rarGlows(s.rarity);}
+// estilo inline que fija color de rareza y de brillo
+function rarStyle(key){return `--rc:${rarColor(key)};--gc:${rarGlowColor(key)}`;}
+// clase de brillo (glowing) si corresponde
+function shineClass(s){if(!s||!rarGlows(s.rarity))return "";return "glowing glow-frame";}
 function canPaste(s){return s && !(s.rarity==="extra" && s.placeable===false);}
 function figFace(s){if(!s)return`<div class="ph">?</div>`;if(s.img)return`<img class="photo" src="${s.img}">`;return`<div class="ph">#${s.num}</div>`;}
 function crestFace(t){return t.crest?`<img src="${t.crest}">`:"🛡️";}
 function E(key){return`<span data-edit="${key}">${T(key)}</span>`;}
 
-const VIEWS={home:renderHome,coleccion:renderColeccion,codigos:renderCodigos,album:renderAlbum,intercambio:renderTrade,sobres:renderPacks,retos:renderRetos,config:renderConfig,admin:renderAdmin,perfil:renderPerfil};
+const VIEWS={home:renderHome,coleccion:renderColeccion,codigos:renderCodigos,album:renderAlbum,intercambio:renderTrade,sobres:renderPacks,retos:renderRetos,config:renderConfig,admin:renderAdmin,perfil:renderPerfil,novedades:renderNovedades};
 function applyBranding(){
   // título de la pestaña
   document.title=(G.config.title||"Álbum")+" "+(G.config.titleAccent||"");
@@ -361,7 +406,7 @@ function bindEditables(){
 function renderTopbar(){return el(`<div class="topbar" style="${editing?'margin-top:34px':''}"><div class="brand"><div class="logo">${G.config.logo?`<img src="${G.config.logo}">`:"🏆"}</div><div class="txt"><span class="eyebrow">Álbum digital</span><h1>${G.config.title} <b>${G.config.titleAccent}</b></h1></div></div></div>`);}
 function renderBottomNav(){
   const nav=el(`<div class="bottomnav"></div>`);
-  [{id:"home",ico:"🏠",lab:T("nav_inicio")},{id:"perfil",ico:"👤",lab:"Mi perfil"},{id:"retos",ico:"🎯",lab:T("nav_retos")},{id:"admin",ico:"🛠️",lab:T("nav_admin")},{id:"config",ico:"⚙️",lab:T("nav_config")}].forEach(it=>{
+  [{id:"home",ico:"🏠",lab:T("nav_inicio")},{id:"perfil",ico:"👤",lab:"Perfil"},{id:"novedades",ico:"🔔",lab:"Novedades"},{id:"retos",ico:"🎯",lab:T("nav_retos")},{id:"admin",ico:"🛠️",lab:T("nav_admin")},{id:"config",ico:"⚙️",lab:T("nav_config")}].forEach(it=>{
     const b=el(`<button class="nav-btn ${view===it.id?'active':''}"><span class="ico">${it.ico}</span>${it.lab}</button>`);
     b.onclick=()=>{if(editing)return;if(it.id==="admin")openAdminLogin();else{view=it.id;albumIndexOpen=false;render();}};nav.appendChild(b);});
   return nav;
@@ -405,7 +450,7 @@ function renderAuth(){
 }
 
 function renderHome(screen){
-  const u=user();const canDaily=Date.now()-u.lastDaily>1000*60*60*20;
+  const u=user();const canDaily=Date.now()-u.lastDaily>dailyHours()*60*60*1000;
   const wrap=el(`<div class="home-wrap"></div>`);
   wrap.appendChild(el(`<p class="hero-line"><span data-edit="_homeSub">${G.config.homeSub}</span></p>`));
   const row=el(`<div class="home-row"></div>`);
@@ -447,7 +492,7 @@ function renderColeccion(screen){
   list.forEach(s=>{const q=u.inventory[s.id]||0,pasted=!!u.pasted[s.id],have=q>0||pasted;
     const repe=q>0; // tiene suelta(s) = a color; si solo pegada y sin suelta = gris
     const grayscale=pasted&&!repe;
-    const card=el(`<div class="sticker ${rclass(s)} ${s.wide?'wide':''} ${have?'have':'missing'} ${repe?shineClass(s):''} ${grayscale?'pegada-gris':''}" ${have?'style="cursor:pointer"':''}><span class="num">#${s.num}</span>${have?figFace(s):`<span class="q">?</span>`}${pasted?`<span class="pegado">PEGADO</span>`:""}${q>0?`<span class="qty">×${q}</span>`:""}${have?`<div class="name">${s.name}</div>`:""}</div>`);
+    const card=el(`<div class="sticker ${s.wide?'wide':''} ${have?'have':'missing'} ${repe?shineClass(s):''} ${grayscale?'pegada-gris':''}" style="${rarStyle(s.rarity)}${have?';cursor:pointer':''}"><span class="num">#${s.num}</span>${have?figFace(s):`<span class="q">?</span>`}${pasted?`<span class="pegado">PEGADO</span>`:""}${q>0?`<span class="qty">×${q}</span>`:""}${have?`<div class="name">${s.name}</div>`:""}</div>`);
     if(have)card.onclick=()=>inspectSticker(s);
     grid.appendChild(card);});
   body.appendChild(grid);screen.appendChild(body);
@@ -459,13 +504,13 @@ function inspectSticker(s){
   const bg=el(`<div class="modal-bg insp-bg"></div>`);
   const stage=el(`<div class="insp-stage"></div>`);
   const cardW=Math.min(320, Math.round(window.innerHeight*0.6*ar));
-  const card=el(`<div class="insp-card ${rclass(s)} ${shineClass(s)}" style="width:${cardW}px;aspect-ratio:${ar}">
+  const card=el(`<div class="insp-card ${shineClass(s)}" style="${rarStyle(s.rarity)};width:${cardW}px;aspect-ratio:${ar}">
       <span class="num">#${s.num}</span>
       ${s.img?`<img src="${s.img}">`:`<div class="insp-ph">#${s.num}</div>`}
       <div class="insp-gloss"></div>
     </div>`);
   stage.appendChild(card);
-  const info=el(`<div class="insp-info"><div class="t">${s.name}</div><div class="s"><span class="rar-dot ${rclass(s)}"></span>${RAR[s.rarity].label} · #${s.num}${q>0?` · tenés ×${q}`:""}${pasted?" · PEGADA":""}</div></div>`);
+  const info=el(`<div class="insp-info"><div class="t">${s.name}</div><div class="s"><span class="rar-dot" style="background:${rarColor(s.rarity)}"></span>${rarLabel(s.rarity)} · #${s.num}${q>0?` · tenés ×${q}`:""}${pasted?" · PEGADA":""}</div></div>`);
   stage.appendChild(info);
   const close=el(`<button class="btn ghost" style="max-width:180px;margin:14px auto 0">Cerrar</button>`);
   close.onclick=()=>bg.remove();stage.appendChild(close);
@@ -532,7 +577,7 @@ function renderPageGrid(team,side){
       continue;
     }
     const sid=s.id;const pasted=u.pasted[sid];const placeable=!pasted&&(u.inventory[sid]||0)>0&&canPaste(s);
-    const slot=el(`<div class="mslot ${rclass(s)} ${wide?'wide':''} ${pasted?'filled':''} ${placeable?'placeable':''} ${pasted?shineClass(s):''}"><span class="num">#${s.num}</span>${pasted?figFace(s):(placeable?`<span class="plus">+</span><div class="glint"></div>`:`<span class="plus" style="color:var(--line)">+</span>`)}</div>`);
+    const slot=el(`<div class="mslot ${wide?'wide':''} ${pasted?'filled':''} ${placeable?'placeable':''} ${pasted?shineClass(s):''}" style="${rarStyle(s.rarity)}"><span class="num">#${s.num}</span>${pasted?figFace(s):(placeable?`<span class="plus">+</span><div class="glint"></div>`:`<span class="plus" style="color:var(--line)">+</span>`)}</div>`);
     if(placeable){let used=false;slot.onclick=()=>{if(editing||used)return;if(u.pasted[sid]||(u.inventory[sid]||0)<=0)return;used=true;u.pasted[sid]=true;u.inventory[sid]--;if(u.inventory[sid]<=0)delete u.inventory[sid];
       slot.onclick=null;slot.classList.remove("placeable");slot.classList.add("filled");if(glows(s)){slot.classList.add(s.rarity==="extra"?"shine-extra":"shine-escudo","glow-frame");}
       slot.innerHTML=`<span class="num">#${s.num}</span>`;slot.appendChild(el(`<div class="stickin">${figFace(s)}</div>`));slot.appendChild(el(`<div class="stamp"></div>`));
@@ -623,75 +668,164 @@ function updatePile(){const u=user();const placeables=Object.keys(u.inventory).f
 function renderTrade(screen){
   const u=user();screen.appendChild(secHead("Mercado",T("tile_intercambio")));
   const body=el(`<div class="scroll-body"></div>`);
-  const create=el(`<div class="panel"><h3>Crear oferta</h3><p>Ofrecé una repetida y pedí la que te falta. Aparece para todos.</p><div class="sp"></div><label class="fld">Doy</label><select id="gs"></select><div class="sp"></div><label class="fld">Quiero recibir</label><select id="ws"></select><div class="sp"></div><button class="btn gold" id="mk">Publicar oferta</button><div class="err" id="te"></div></div>`);
-  const gs=create.querySelector("#gs"),dups=Object.keys(u.inventory).filter(id=>u.inventory[id]>0);
-  if(!dups.length)gs.appendChild(el(`<option value="">(no tenés figuritas para ofrecer)</option>`));
-  dups.forEach(id=>{const s=G.stickers.find(x=>x.id===id);gs.appendChild(el(`<option value="${id}">#${s.num} ${s.name} (×${u.inventory[id]})</option>`));});
-  const ws=create.querySelector("#ws");G.stickers.forEach(s=>ws.appendChild(el(`<option value="${s.id}">#${s.num} ${s.name}</option>`)));
-  create.querySelector("#mk").onclick=async()=>{if(editing)return;const g=gs.value,w=ws.value;if(!g){$("#te").textContent="No tenés repetidas.";return;}if(g===w){$("#te").textContent="No podés pedir la misma.";return;}const rec={from_user:SESSION.user.id,from_name:u.username,give_id:g,want_id:w};const {data}=await sb.from("trades").insert(rec).select().single();tradeOffers.unshift({id:data?data.id:Date.now(),from:u.username,fromUser:SESSION.user.id,give:g,want:w});toast("Oferta publicada");render();};
+  const dups=Object.keys(u.inventory).filter(id=>u.inventory[id]>0);
+  const create=el(`<div class="panel"><h3>Crear oferta</h3><p>Ofrecé una o varias repetidas y pedí la que te falta.</p><div class="sp"></div><label class="fld">Doy (tocá para elegir, podés varias)</label><div class="give-pick" id="gp"></div><div class="sp"></div><label class="fld">Quiero recibir</label><select id="ws"></select><div class="sp"></div><button class="btn gold" id="mk">Publicar oferta</button><div class="err" id="te"></div></div>`);
+  const gp=create.querySelector("#gp");
+  let chosen=[];
+  if(!dups.length)gp.appendChild(el(`<div class="empty-note" style="margin:0">No tenés repetidas para ofrecer.</div>`));
+  dups.forEach(id=>{const s=G.stickers.find(x=>x.id===id);if(!s)return;const chip=el(`<button class="give-chip">#${s.num} ${s.name} <span class="x">×${u.inventory[id]}</span></button>`);chip.onclick=()=>{if(chosen.includes(id)){chosen=chosen.filter(c=>c!==id);chip.classList.remove("on");}else{chosen.push(id);chip.classList.add("on");}};gp.appendChild(chip);});
+  const ws=create.querySelector("#ws");G.stickers.slice().sort(albumOrder).forEach(s=>ws.appendChild(el(`<option value="${s.id}">#${s.num} ${s.name} · ${teamName(s.team)}</option>`)));
+  create.querySelector("#mk").onclick=async()=>{if(editing)return;const w=ws.value;if(!chosen.length){$("#te").textContent="Elegí al menos una figurita para dar.";return;}if(chosen.includes(w)){$("#te").textContent="No podés pedir una que estás dando.";return;}
+    const rec={from_user:SESSION.user.id,from_name:u.username,give_id:chosen[0],give_ids:chosen,want_id:w};
+    const {data,error}=await sb.from("trades").insert(rec).select().single();
+    if(error){toast("No se pudo publicar");return;}
+    tradeOffers.unshift({id:data?data.id:Date.now(),from:u.username,fromUser:SESSION.user.id,give:chosen[0],giveIds:chosen,want:w});
+    toast("Oferta publicada");render();};
   body.appendChild(create);body.appendChild(el(`<p class="hero-line" style="margin-top:6px">Ofertas activas</p>`));
   if(!tradeOffers.length)body.appendChild(el(`<div class="empty-note">Todavía no hay ofertas. Publicá la primera.</div>`));
-  tradeOffers.forEach(o=>{const gsk=G.stickers.find(x=>x.id===o.give),wsk=G.stickers.find(x=>x.id===o.want),mine=o.from===u.username;
-    const card=el(`<div class="offer"><div class="who">${mine?"Tu oferta":"De "+o.from}</div><div class="deal"><div class="side"><div class="lab">Da</div><div class="card ${rclass(gsk)} ${shineClass(gsk)}">${figFace(gsk)}</div></div><div class="arrow-mid">⇄</div><div class="side"><div class="lab">Quiere</div><div class="card ${rclass(wsk)} ${shineClass(wsk)}">${figFace(wsk)}</div></div></div><div class="sp"></div>${mine?`<button class="btn ghost sm cancel">Cancelar oferta</button>`:`<button class="btn sm accept">Aceptar (doy #${wsk.num})</button>`}</div>`);
+  tradeOffers.forEach(o=>{
+    const giveIds=o.giveIds&&o.giveIds.length?o.giveIds:[o.give];
+    const wsk=G.stickers.find(x=>x.id===o.want),mine=(o.fromUser&&SESSION&&o.fromUser===SESSION.user.id)||o.from===u.username;
+    const tengo=(u.inventory[o.want]||0)>0;
+    const givesHtml=giveIds.map(gid=>{const gsk=G.stickers.find(x=>x.id===gid);return `<div class="card sm ${shineClass(gsk)}" style="${gsk?rarStyle(gsk.rarity):''}">${figFace(gsk)}</div>`;}).join("");
+    const card=el(`<div class="offer"><div class="who">${mine?"Tu oferta":"De "+o.from}</div><div class="deal"><div class="side"><div class="lab">Da ${giveIds.length>1?`(${giveIds.length})`:''}</div><div class="give-cards">${givesHtml}</div></div><div class="arrow-mid">⇄</div><div class="side"><div class="lab">Quiere</div><div class="card ${shineClass(wsk)}" style="${wsk?rarStyle(wsk.rarity):''}">${figFace(wsk)}</div></div></div>
+      ${!mine?`<div class="tradehint ${tengo?'ok':'no'}">${tengo?`✓ Tenés #${wsk?wsk.num:'?'} para dar`:`✗ No tenés #${wsk?wsk.num:'?'}`}</div>`:''}
+      <div class="sp"></div>${mine?`<button class="btn ghost sm cancel">Cancelar oferta</button>`:`<button class="btn sm accept" ${tengo?'':'disabled'}>Aceptar (doy #${wsk?wsk.num:'?'})</button>`}</div>`);
     if(mine)card.querySelector(".cancel").onclick=async()=>{if(o.id)await sb.from("trades").delete().eq("id",o.id);tradeOffers=tradeOffers.filter(x=>x.id!==o.id);render();};
-    else card.querySelector(".accept").onclick=async()=>{if((u.inventory[o.want]||0)<=0){toast("No tenés esa figurita para dar");return;}u.inventory[o.want]--;if(u.inventory[o.want]<=0)delete u.inventory[o.want];u.inventory[o.give]=(u.inventory[o.give]||0)+1;u.trades=(u.trades||0)+1;if(o.id)await sb.from("trades").delete().eq("id",o.id);tradeOffers=tradeOffers.filter(x=>x.id!==o.id);toast("¡Intercambio realizado!");saveProfileSoon();render();};
+    else{const ab=card.querySelector(".accept");if(ab&&tengo)ab.onclick=async()=>{
+      ab.disabled=true;ab.textContent="Procesando...";
+      const {data,error}=await sb.rpc("accept_trade",{p_trade_id:o.id});
+      if(error){toast("Error en el intercambio");ab.disabled=false;return;}
+      if(data!=="ok"){toast(data||"No se pudo");ab.disabled=false;ab.textContent="Reintentar";return;}
+      // recargar inventario y ofertas desde la base
+      await loadProfile();await loadGlobalTrades();
+      toast("¡Intercambio realizado!");render();
+    };}
     body.appendChild(card);});
   screen.appendChild(body);
 }
+// recarga solo las ofertas de intercambio
+async function loadGlobalTrades(){
+  const {data}=await sb.from("trades").select("*").order("created_at",{ascending:false});
+  tradeOffers=(data||[]).map(o=>({id:o.id,from:o.from_name,fromUser:o.from_user,give:o.give_id,giveIds:o.give_ids,want:o.want_id}));
+}
+function renderNovedades(screen){
+  const u=user();screen.appendChild(secHead("Tus avisos y sugerencias","Novedades"));
+  const body=el(`<div class="scroll-body"></div>`);
+  // ---- Notificaciones ----
+  const unread=notifications.filter(n=>!n.read).length;
+  const np=el(`<div class="panel"><h3>Notificaciones ${unread?`<span class="badge-inline">${unread}</span>`:''}</h3><div class="sp"></div></div>`);
+  if(!notifications.length)np.appendChild(el(`<div class="empty-note" style="margin:0">No tenés notificaciones.</div>`));
+  notifications.forEach(n=>{const it=el(`<div class="noti ${n.read?'':'unread'}"><div class="nt">${n.text}</div><div class="nd">${timeAgo(n.created_at)}</div></div>`);np.appendChild(it);});
+  if(notifications.length){const clr=el(`<button class="btn ghost sm" style="margin-top:10px">Marcar todas leídas</button>`);clr.onclick=async()=>{await sb.from("notifications").update({read:true}).eq("user_id",SESSION.user.id);await loadNotifications();render();};np.appendChild(clr);}
+  body.appendChild(np);
+  // ---- Sugerencias ----
+  const sp=el(`<div class="panel"><h3>Sugerencias</h3><p>Dejá tu idea para mejorar el álbum. La ven todos.</p><div class="sp"></div><textarea id="sgt" rows="2" placeholder="Tu sugerencia..." style="width:100%;resize:vertical"></textarea><div class="sp"></div><button class="btn gold sm" id="sgb">Publicar sugerencia</button></div>`);
+  sp.querySelector("#sgb").onclick=async()=>{const t=$("#sgt").value.trim();if(!t)return;await sb.from("suggestions").insert({user_name:u.username,text:t});$("#sgt").value="";await loadSuggestions();render();toast("¡Gracias por tu sugerencia!");};
+  body.appendChild(sp);
+  const list=el(`<div></div>`);
+  (suggestions||[]).forEach(sg=>{const it=el(`<div class="sugg"><div class="st">${sg.text}</div><div class="sm2">— ${sg.user_name||"anónimo"} · ${timeAgo(sg.created_at)}</div>${isAdmin?'<button class="btn danger sm sdel">✕</button>':''}</div>`);if(isAdmin)it.querySelector(".sdel").onclick=async()=>{await sb.from("suggestions").delete().eq("id",sg.id);await loadSuggestions();render();};list.appendChild(it);});
+  body.appendChild(list);
+  screen.appendChild(body);
+}
+let suggestions=[];
+async function loadSuggestions(){const {data}=await sb.from("suggestions").select("*").order("created_at",{ascending:false}).limit(50);suggestions=data||[];}
+function timeAgo(ts){if(!ts)return"";const d=(Date.now()-new Date(ts).getTime())/1000;if(d<60)return"recién";if(d<3600)return Math.floor(d/60)+"m";if(d<86400)return Math.floor(d/3600)+"h";return Math.floor(d/86400)+"d";}
 
+function dailyHours(){return (G.config.dailyHours&&G.config.dailyHours>0)?G.config.dailyHours:4;}
+// notificaciones
+let notifications=[];
+async function loadNotifications(){
+  if(!SESSION)return;
+  const {data}=await sb.from("notifications").select("*").eq("user_id",SESSION.user.id).order("created_at",{ascending:false}).limit(40);
+  notifications=data||[];
+}
+async function addNoti(text){
+  if(!SESSION)return;
+  await sb.from("notifications").insert({user_id:SESSION.user.id,text});
+  await loadNotifications();
+}
 function renderPacks(screen){
   const u=user();screen.appendChild(secHead("Abrí tus sobres",T("tile_sobres")));
   const body=el(`<div class="scroll-body"></div>`);
-  const canDaily=Date.now()-u.lastDaily>1000*60*60*20;
-  const daily=el(`<div class="panel"><h3>${E("sobre_diario_titulo")}</h3><p>${canDaily?"Tenés tu sobre gratis de hoy disponible.":"Ya lo reclamaste. Volvé mañana."}</p><div class="sp"></div><button class="btn ${canDaily?'gold':'ghost'}" id="cd" ${canDaily?'':'disabled'}>${canDaily?"Reclamar sobre gratis":"Reclamado ✓"}</button></div>`);
-  daily.querySelector("#cd").onclick=()=>{if(editing)return;u.lastDaily=Date.now();u.packs.push("PD"+Date.now());toast("¡Sobre diario agregado!");render();};
-  body.appendChild(daily);body.appendChild(el(`<p class="hero-line" style="margin-top:6px">Tus sobres (${u.packs.length})</p>`));
-  if(!u.packs.length)body.appendChild(el(`<div class="empty-note">No tenés sobres. Reclamá el diario o canjeá un código.</div>`));
+  const intervalMs=dailyHours()*60*60*1000;
+  const elapsed=Date.now()-u.lastDaily;
+  const canDaily=elapsed>intervalMs;
+  let waitTxt="";
+  if(!canDaily){const rem=intervalMs-elapsed;const h=Math.floor(rem/3600000);const m=Math.floor((rem%3600000)/60000);waitTxt=`Disponible en ${h}h ${m}m`;}
+  const daily=el(`<div class="panel"><h3>${E("sobre_diario_titulo")}</h3><p>${canDaily?`Tenés un sobre gratis disponible (cada ${dailyHours()}h).`:waitTxt}</p><div class="sp"></div><button class="btn ${canDaily?'gold':'ghost'}" id="cd" ${canDaily?'':'disabled'}>${canDaily?"Reclamar sobre gratis":"Ya reclamado"}</button></div>`);
+  daily.querySelector("#cd").onclick=()=>{if(editing)return;u.lastDaily=Date.now();u.packs.push("PD"+Date.now());addNoti("Reclamaste tu sobre gratis");toast("¡Sobre agregado!");render();};
+  body.appendChild(daily);
+
+  body.appendChild(el(`<p class="hero-line" style="margin-top:6px">Tus sobres (${u.packs.length})</p>`));
+  if(!u.packs.length)body.appendChild(el(`<div class="empty-note">No tenés sobres. Reclamá el gratis o canjeá un código.</div>`));
   else{const shelf=el(`<div class="pack-shelf"></div>`);u.packs.forEach(pid=>{
-    const img=G.config.packImg;
-    const e=el(`<button class="envelope ${img?'hasimg':''}">${img?`<img class="envimg" src="${img}"><div class="envtint"></div>`:""}<div class="ttl">SOBRE</div><div class="pl">5 figuritas · tocá para abrir</div></button>`);
+    // imagen: especial si corresponde, si no la común
+    let img=G.config.packImg, name="SOBRE", cnt=packCount();
+    if(typeof pid==="string" && pid.indexOf("PS:")===0){const sp=(G.config.specialPacks||[]).find(x=>x.id===pid.split(":")[1]);if(sp){img=sp.img||img;name=sp.name||"SOBRE ESPECIAL";cnt=sp.count||cnt;}}
+    const e=el(`<button class="envelope big ${img?'hasimg':''}">
+        <div class="env-spark s1"></div><div class="env-spark s2"></div><div class="env-spark s3"></div>
+        <div class="env-imgwrap">${img?`<img class="envimg" src="${img}">`:`<div class="env-emoji">✉️</div>`}</div>
+        <div class="env-cap"><div class="ttl">${name}</div><div class="pl">${cnt} figuritas · tocá para abrir</div></div>
+      </button>`);
     e.onclick=()=>{if(editing)return;openPack(pid);};shelf.appendChild(e);});body.appendChild(shelf);}
   screen.appendChild(body);
 }
 // peso de aparición por rareza (mayor = más común)
-const RARITY_WEIGHT={comun:100,rara:35,ultra:12,escudo:8,extra:4};
-// figuritas elegibles para sobres (excluye extras y las marcadas como "no sale en sobres")
-function packPool(){return G.stickers.filter(s=>s.inPack!==false && s.rarity!=="extra");}
-function extraPool(){return G.stickers.filter(s=>s.inPack!==false && s.rarity==="extra");}
+function rarWeight(key){const d=rarDef(key);return (d&&typeof d.weight==="number")?d.weight:50;}
+// figuritas elegibles para un sobre dado (respeta inPack y rarezas no-extra)
+function packPool(){return G.stickers.filter(s=>s.inPack!==false && !rarIsExtra(s.rarity));}
+function extraPool(){return G.stickers.filter(s=>s.inPack!==false && rarIsExtra(s.rarity));}
 function weightedPick(list){
   if(!list.length)return null;
   let total=0;const acc=[];
-  for(const s of list){const w=RARITY_WEIGHT[s.rarity]||50;total+=w;acc.push([total,s]);}
+  for(const s of list){const w=rarWeight(s.rarity);total+=w;acc.push([total,s]);}
   const r=Math.random()*total;
   for(const [t,s] of acc){if(r<t)return s;}
   return list[list.length-1];
 }
+// config de sobres con defaults
+function packCount(){return (G.config.packCount&&G.config.packCount>0)?G.config.packCount:5;}
+function extraChance(){return (typeof G.config.extraChance==="number")?G.config.extraChance:0.12;}
 function openPack(pid){
-  const u=user();u.packs=u.packs.filter(p=>p!==pid);
+  const u=user();
+  // detectar tipo de sobre: los especiales tienen prefijo "PS:<idSobre>"
+  let special=null;
+  if(typeof pid==="string" && pid.indexOf("PS:")===0){
+    const sid=pid.split(":")[1];
+    special=(G.config.specialPacks||[]).find(sp=>sp.id===sid)||null;
+  }
+  u.packs=u.packs.filter(p=>p!==pid);
   u.opened=(u.opened||0)+1;
-  const pool=packPool();
+  // pool según sobre
+  let pool;
+  if(special && special.stickerIds && special.stickerIds.length){
+    pool=G.stickers.filter(s=>special.stickerIds.includes(s.id) && !rarIsExtra(s.rarity));
+    if(!pool.length)pool=packPool();
+  }else{
+    pool=packPool();
+  }
+  const count=special&&special.count?special.count:packCount();
   const drops=[],wasNew=[];
-  // 5 figuritas normales (no extra), por peso de rareza
-  for(let i=0;i<5;i++){
-    const s=weightedPick(pool)|| (G.stickers[0]);
+  for(let i=0;i<count;i++){
+    const s=weightedPick(pool)||G.stickers[0];
     if(!s)break;
     wasNew.push(!(u.inventory[s.id]>0)&&!u.pasted[s.id]);
     u.inventory[s.id]=(u.inventory[s.id]||0)+1;drops.push(s);
   }
-  // posible EXTRA como 6ª figurita (probabilidad baja, máximo uno)
-  const EXTRA_CHANCE=0.12;
+  // posible EXTRA como figurita adicional (probabilidad baja, máximo uno)
   const ex=extraPool();
-  if(ex.length && Math.random()<EXTRA_CHANCE){
+  if(ex.length && Math.random()<extraChance()){
     const s=weightedPick(ex);
     if(s){wasNew.push(!(u.inventory[s.id]>0)&&!u.pasted[s.id]);u.inventory[s.id]=(u.inventory[s.id]||0)+1;drops.push(s);}
   }
   saveProfileSoon();
   const flash=el(`<div class="pack-flash"></div>`);document.body.appendChild(flash);
   setTimeout(()=>{flash.remove();
-    const gotExtra=drops.some(d=>d.rarity==="extra");
+    const gotExtra=drops.some(d=>rarIsExtra(d.rarity));
     const r=el(`<div class="reveal"><h3>${gotExtra?"¡Sobre con EXTRA! ✨":"¡Tus figuritas!"}</h3></div>`);
     const cards=el(`<div class="reveal-cards"></div>`);
-    drops.forEach((s,i)=>cards.appendChild(el(`<div class="reveal-card ${rclass(s)} ${glows(s)?(s.rarity==='extra'?'shine-extra':'shine-escudo')+' glow-frame':''} ${wasNew[i]?'new':''}">${figFace(s)}<div class="rlabel">#${s.num} · ${RAR[s.rarity].label}</div></div>`)));
+    drops.forEach((s,i)=>cards.appendChild(el(`<div class="reveal-card ${shineClass(s)} ${wasNew[i]?'new':''}" style="${rarStyle(s.rarity)}">${figFace(s)}<div class="rlabel">#${s.num} · ${rarLabel(s.rarity)}</div></div>`)));
     r.appendChild(cards);const c=el(`<button class="btn gold" style="max-width:220px">Genial</button>`);c.onclick=()=>{r.remove();render();};r.appendChild(c);document.body.appendChild(r);},1000);
 }
 function renderRetos(screen){screen.appendChild(secHead("Cambian cada semana",T("nav_retos")));const body=el(`<div class="scroll-body"></div>`);if(!G.retos.length){body.appendChild(el(`<div class="empty-note">No hay retos activos.</div>`));}G.retos.forEach(r=>{body.appendChild(el(`<div class="reto-card"><div class="wk">${r.week}</div><h3>${r.title}</h3><p>${r.desc}</p><div class="reward">🎁 ${r.reward}</div></div>`));body.appendChild(el(`<div class="sp"></div>`));});screen.appendChild(body);}
@@ -731,11 +865,11 @@ function openAdminLogin(){
   const m=el(`<div class="modal"><h3>Modo administrador</h3><p style="font-size:13px;color:var(--muted)">Tu cuenta no tiene permisos de administrador. Un admin debe activarlos para tu usuario desde la base de datos (campo is_admin).</p><div class="sp"></div><button class="btn ghost" id="ac">Entendido</button></div>`);
   m.querySelector("#ac").onclick=()=>bg.remove();bg.appendChild(m);document.body.appendChild(bg);
 }
-const ADMIN_TABS={figuritas:adminFiguritas,album:adminAlbum,portadas:adminPortadas,sobres:adminSobres,marca:adminMarca,editor:adminEditor,codigos:adminCodigos,retos:adminRetos,usuarios:adminUsuarios};
+const ADMIN_TABS={figuritas:adminFiguritas,album:adminAlbum,rarezas:adminRarezas,portadas:adminPortadas,sobres:adminSobres,marca:adminMarca,editor:adminEditor,codigos:adminCodigos,retos:adminRetos,usuarios:adminUsuarios};
 function renderAdmin(screen){
   screen.appendChild(secHead("Editás para todos",T("nav_admin")));
   const tabs=el(`<div class="admin-tabs"></div>`);
-  [["figuritas","Figuritas"],["album","Álbum y equipos"],["portadas","Portadas"],["sobres","Sobres"],["marca","Logo, tapa y textos"],["editor","Editor visual"],["codigos","Códigos"],["retos","Retos"],["usuarios","Usuarios"]].forEach(([id,lab])=>{const b=el(`<button class="atab ${adminTab===id?'active':''}">${lab}</button>`);b.onclick=()=>{adminTab=id;render();};tabs.appendChild(b);});
+  [["figuritas","Figuritas"],["album","Álbum y equipos"],["rarezas","Rarezas"],["portadas","Portadas"],["sobres","Sobres"],["marca","Logo, tapa y textos"],["editor","Editor visual"],["codigos","Códigos"],["retos","Retos"],["usuarios","Usuarios"]].forEach(([id,lab])=>{const b=el(`<button class="atab ${adminTab===id?'active':''}">${lab}</button>`);b.onclick=()=>{adminTab=id;render();};tabs.appendChild(b);});
   screen.appendChild(tabs);
   const body=el(`<div class="scroll-body"></div>`);body.appendChild((ADMIN_TABS[adminTab]||adminFiguritas)());screen.appendChild(body);
 }
@@ -778,7 +912,7 @@ function adminFiguritas(){
   if(admFilter.q.trim()){const q=admFilter.q.trim().toLowerCase();list=list.filter(s=>(s.name||"").toLowerCase().includes(q)||String(s.num)===q);}
   list.sort(albumOrder);
   box.appendChild(el(`<p class="hero-line">Figuritas (${list.length}${list.length!==G.stickers.length?` de ${G.stickers.length}`:''})</p>`));
-  list.forEach(s=>{const it=el(`<div class="adm-item ${rclass(s)}"><div class="thumb">${s.img?`<img src="${s.img}">`:`#${s.num}`}</div><div class="meta"><div class="t">${s.name} ${s.wide?'↔':''}</div><div class="s"><span class="rar-dot"></span>#${s.num} · ${teamName(s.team)} · ${RAR[s.rarity].label}${s.inPack===false?' · sin sobres':''}</div></div><button class="btn ghost sm edit">Editar</button><button class="btn danger sm del">✕</button></div>`);it.querySelector(".del").onclick=async()=>{await sb.from("stickers").delete().eq("id",s.id);G.stickers=G.stickers.filter(x=>x.id!==s.id);toast("Borrada");render();};it.querySelector(".edit").onclick=()=>editSticker(s);box.appendChild(it);});
+  list.forEach(s=>{const it=el(`<div class="adm-item"><div class="thumb">${s.img?`<img src="${s.img}">`:`#${s.num}`}</div><div class="meta"><div class="t">${s.name} ${s.wide?'↔':''}</div><div class="s"><span class="rar-dot" style="background:${rarColor(s.rarity)}"></span>#${s.num} · ${teamName(s.team)} · ${rarLabel(s.rarity)}${s.inPack===false?' · sin sobres':''}</div></div><button class="btn ghost sm edit">Editar</button><button class="btn danger sm del">✕</button></div>`);it.querySelector(".del").onclick=async()=>{await sb.from("stickers").delete().eq("id",s.id);G.stickers=G.stickers.filter(x=>x.id!==s.id);toast("Borrada");render();};it.querySelector(".edit").onclick=()=>editSticker(s);box.appendChild(it);});
   return box;
 }
 function teamName(id){const t=G.teams.find(x=>x.id===id);return t?t.name:id;}
@@ -830,12 +964,83 @@ function adminPortadas(){
     box.appendChild(it);});
   return box;
 }
+function adminRarezas(){
+  const box=el(`<div></div>`);
+  box.appendChild(el(`<p class="hero-line">Editá probabilidad (peso), color, brillo y nombre. Mayor peso = sale más seguido.</p>`));
+  // asegurar que existan en config
+  if(!G.config.rarities||!G.config.rarities.length)G.config.rarities=JSON.parse(JSON.stringify(DEFAULT_RARITIES));
+  const rs=G.config.rarities;
+  rs.forEach((r,i)=>{
+    const card=el(`<div class="panel"><div class="row"><div style="flex:2"><label class="fld">Nombre</label><input class="rn" value="${r.label||''}"></div><div style="flex:1"><label class="fld">Peso</label><input class="rw" type="number" value="${r.weight!=null?r.weight:50}"></div></div>
+      <div class="sp"></div>
+      <div class="row"><div style="flex:1"><label class="fld">Color</label><input class="rc" type="color" value="${r.color||'#7c8aa0'}" style="height:38px;padding:2px"></div><div style="flex:1"><label class="fld">Color del brillo</label><input class="rgc" type="color" value="${r.glowColor||'#ffffff'}" style="height:38px;padding:2px"></div></div>
+      <div class="sp"></div>
+      <div class="toggle ${r.glow?'on':''} rg"><div class="tk"></div><div class="tl">Tiene brillo</div></div>
+      <div class="toggle ${r.isExtra?'on':''} rx"><div class="tk"></div><div class="tl">Es "extra" (sale como adicional del sobre, único)</div></div>
+      <div class="sp"></div>
+      <div class="row"><button class="btn gold sm rsave" style="flex:1">Guardar</button>${rs.length>1?`<button class="btn danger sm rdel">✕</button>`:''}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:6px">clave interna: ${r.key}</div></div>`);
+    let glow=!!r.glow, isExtra=!!r.isExtra;
+    card.querySelector(".rg").onclick=function(){glow=!glow;this.classList.toggle("on",glow);};
+    card.querySelector(".rx").onclick=function(){isExtra=!isExtra;this.classList.toggle("on",isExtra);};
+    card.querySelector(".rsave").onclick=async()=>{
+      r.label=card.querySelector(".rn").value.trim()||r.label;
+      r.weight=Math.max(0,parseInt(card.querySelector(".rw").value)||0);
+      r.color=card.querySelector(".rc").value;
+      r.glowColor=card.querySelector(".rgc").value;
+      r.glow=glow;r.isExtra=isExtra;
+      await saveConfig();toast("Rareza guardada");render();};
+    const dl=card.querySelector(".rdel");if(dl)dl.onclick=async()=>{if(!confirm("¿Borrar esta rareza? Las figuritas que la usen quedarán como común."))return;G.config.rarities.splice(i,1);await saveConfig();render();};
+    box.appendChild(card);
+  });
+  // crear nueva
+  const add=el(`<div class="panel"><h3>Nueva rareza</h3><label class="fld">Nombre</label><input id="nrn" placeholder="Ej: Legendaria"><div class="sp"></div><label class="fld">Peso (probabilidad)</label><input id="nrw" type="number" value="20"><div class="sp"></div><div class="row"><div style="flex:1"><label class="fld">Color</label><input id="nrc" type="color" value="#ff5bb0" style="height:38px"></div><div style="flex:1"><label class="fld">Color brillo</label><input id="nrgc" type="color" value="#ffd0ec" style="height:38px"></div></div><div class="sp"></div><div class="toggle" id="nrg"><div class="tk"></div><div class="tl">Tiene brillo</div></div><div class="sp"></div><button class="btn gold sm" id="nradd">Crear rareza</button></div>`);
+  let ng=false;add.querySelector("#nrg").onclick=function(){ng=!ng;this.classList.toggle("on",ng);};
+  add.querySelector("#nradd").onclick=async()=>{const label=$("#nrn").value.trim();if(!label){toast("Poné un nombre");return;}
+    const key="r"+Date.now().toString(36);
+    G.config.rarities.push({key,label,weight:Math.max(0,parseInt($("#nrw").value)||20),color:$("#nrc").value,glow:ng,glowColor:$("#nrgc").value,isExtra:false});
+    await saveConfig();toast("Rareza creada");render();};
+  box.appendChild(add);
+  return box;
+}
 function adminSobres(){
   const box=el(`<div></div>`);
-  const p=el(`<div class="panel"><h3>Imagen del sobre</h3><p>Esta imagen reemplaza el diseño del sobre para todos.</p><div class="sp"></div><div class="adm-item" style="margin:0"><div class="thumb">${G.config.packImg?`<img src="${G.config.packImg}">`:"✉️"}</div><div class="meta"><div class="t">Sobre</div><div class="s">${G.config.packImg?"Imagen cargada":"Diseño por defecto"}</div></div><label class="btn ghost sm" style="position:relative;overflow:hidden">Subir<input id="pkin" type="file" accept="image/*" style="position:absolute;inset:0;opacity:0"></label>${G.config.packImg?`<button class="btn danger sm" id="pkclr">✕</button>`:""}</div></div>`);
+  const p=el(`<div class="panel"><h3>Imagen del sobre común</h3><p>Reemplaza el diseño del sobre para todos.</p><div class="sp"></div><div class="adm-item" style="margin:0"><div class="thumb">${G.config.packImg?`<img src="${G.config.packImg}">`:"✉️"}</div><div class="meta"><div class="t">Sobre</div><div class="s">${G.config.packImg?"Imagen cargada":"Diseño por defecto"}</div></div><label class="btn ghost sm" style="position:relative;overflow:hidden">Subir<input id="pkin" type="file" accept="image/*" style="position:absolute;inset:0;opacity:0"></label>${G.config.packImg?`<button class="btn danger sm" id="pkclr">✕</button>`:""}</div></div>`);
   p.querySelector("#pkin").onchange=async e=>{const f=e.target.files[0];if(f){const url=await uploadImage(f);if(url){G.config.packImg=url;await saveConfig();toast("Sobre actualizado");render();}}};
   if(G.config.packImg)p.querySelector("#pkclr").onclick=async()=>{G.config.packImg=null;await saveConfig();render();};
-  box.appendChild(p);return box;
+  box.appendChild(p);
+
+  // ajustes numéricos
+  const cfg=el(`<div class="panel"><h3>Ajustes de sobres</h3>
+    <label class="fld">Figuritas por sobre</label><input id="pc" type="number" value="${packCount()}">
+    <div class="sp"></div><label class="fld">Probabilidad de Extra (0 a 1, ej 0.12 = 12%)</label><input id="ec" type="number" step="0.01" value="${extraChance()}">
+    <div class="sp"></div><label class="fld">Cada cuántas horas el sobre gratis</label><input id="dh" type="number" value="${dailyHours()}">
+    <div class="sp"></div><button class="btn gold sm" id="cfgsave">Guardar ajustes</button></div>`);
+  cfg.querySelector("#cfgsave").onclick=async()=>{
+    G.config.packCount=Math.max(1,parseInt($("#pc").value)||5);
+    G.config.extraChance=Math.min(1,Math.max(0,parseFloat($("#ec").value)||0));
+    G.config.dailyHours=Math.max(1,parseInt($("#dh").value)||4);
+    await saveConfig();toast("Ajustes guardados");render();};
+  box.appendChild(cfg);
+
+  // sobres especiales
+  box.appendChild(el(`<p class="hero-line">Sobres especiales</p>`));
+  const sps=G.config.specialPacks||[];
+  const addSp=el(`<div class="panel"><h3>Crear sobre especial</h3><label class="fld">Nombre</label><input id="spn" placeholder="Ej: Sobre dorado"><div class="sp"></div><label class="fld">Figuritas por sobre</label><input id="spc" type="number" value="5"><div class="sp"></div><div class="toggle on" id="spall"><div class="tk"></div><div class="tl">Trae cualquier figurita (si lo apagás, elegís cuáles)</div></div><div class="sp"></div><div id="spsel" style="display:none"></div><label class="fld">Imagen del sobre</label><input id="spimg" type="file" accept="image/*"><div class="sp"></div><button class="btn gold sm" id="spadd">Crear sobre especial</button></div>`);
+  let spAll=true, spChosen=[];
+  const selBox=addSp.querySelector("#spsel");
+  G.stickers.slice().sort(albumOrder).forEach(s=>{const c=el(`<button class="give-chip">#${s.num} ${s.name}</button>`);c.onclick=()=>{if(spChosen.includes(s.id)){spChosen=spChosen.filter(x=>x!==s.id);c.classList.remove("on");}else{spChosen.push(s.id);c.classList.add("on");}};selBox.appendChild(c);});
+  addSp.querySelector("#spall").onclick=function(){spAll=!spAll;this.classList.toggle("on",spAll);selBox.style.display=spAll?"none":"flex";selBox.style.flexWrap="wrap";selBox.style.gap="6px";};
+  addSp.querySelector("#spadd").onclick=async()=>{const name=$("#spn").value.trim()||"Sobre especial";const count=Math.max(1,parseInt($("#spc").value)||5);const f=$("#spimg").files[0];let img=null;if(f)img=await uploadImage(f);
+    const sp={id:"SP"+Date.now(),name,count,img,stickerIds:spAll?null:spChosen.slice()};
+    G.config.specialPacks=(G.config.specialPacks||[]).concat([sp]);await saveConfig();toast("Sobre especial creado");render();};
+  box.appendChild(addSp);
+
+  sps.forEach(sp=>{const it=el(`<div class="adm-item"><div class="thumb">${sp.img?`<img src="${sp.img}">`:"✨"}</div><div class="meta"><div class="t">${sp.name}</div><div class="s">${sp.count} figus · ${sp.stickerIds?sp.stickerIds.length+" específicas":"cualquiera"}</div></div><button class="btn ghost sm give">Dar a todos</button><button class="btn danger sm del">✕</button></div>`);
+    it.querySelector(".del").onclick=async()=>{G.config.specialPacks=(G.config.specialPacks||[]).filter(x=>x.id!==sp.id);await saveConfig();render();};
+    it.querySelector(".give").onclick=async()=>{if(!confirm(`¿Dar "${sp.name}" a TODOS los usuarios?`))return;const {data}=await sb.from("profiles").select("id,packs");for(const pr of (data||[])){const np=(pr.packs||[]).concat(["PS:"+sp.id]);await sb.from("profiles").update({packs:np}).eq("id",pr.id);}toast("Sobre especial repartido");if(SESSION){await loadProfile();}render();};
+    box.appendChild(it);});
+  return box;
 }
 function adminMarca(){
   const box=el(`<div></div>`);
@@ -884,10 +1089,11 @@ function adminUsuarios(){
     data.forEach(pr=>{
       const inv=pr.inventory||{},packs=pr.packs||[],pasted=pr.pasted||{};
       const q=Object.values(inv).reduce((a,b)=>a+b,0);
-      const it=el(`<div class="adm-item"><div class="thumb">👤</div><div class="meta"><div class="t">${pr.username||"(sin nombre)"} ${pr.is_admin?'· ADMIN':''}</div><div class="s">${q} sueltas · ${packs.length} sobres · ${Object.keys(pasted).length} pegadas</div></div><button class="btn gold sm give">+ Sobre</button><button class="btn ghost sm adm">${pr.is_admin?'Quitar admin':'Hacer admin'}</button><button class="btn ghost sm rst">Reset</button><button class="btn danger sm del">✕</button></div>`);
+      const it=el(`<div class="adm-item"><div class="thumb">👤</div><div class="meta"><div class="t">${pr.username||"(sin nombre)"} ${pr.is_admin?'· ADMIN':''}</div><div class="s">${q} sueltas · ${packs.length} sobres · ${Object.keys(pasted).length} pegadas</div></div><button class="btn gold sm give">+ Sobre</button><button class="btn ghost sm fig">+ Figurita</button><button class="btn ghost sm adm">${pr.is_admin?'Quitar admin':'Hacer admin'}</button><button class="btn ghost sm rst">Reset</button><button class="btn danger sm del">✕</button></div>`);
       it.querySelector(".give").onclick=async()=>{const np=packs.concat(["PA"+Date.now()]);await sb.from("profiles").update({packs:np}).eq("id",pr.id);
         if(SESSION&&pr.id===SESSION.user.id){clearTimeout(saveTimer);G.users[CUR].packs=np;}
-        toast("Sobre dado");render();};
+        await addNotiTo(pr.id,"Te regalaron un sobre");toast("Sobre dado");render();};
+      it.querySelector(".fig").onclick=()=>giveStickerModal(pr,inv);
       it.querySelector(".adm").onclick=async()=>{await sb.from("profiles").update({is_admin:!pr.is_admin}).eq("id",pr.id);
         if(SESSION&&pr.id===SESSION.user.id){isAdmin=!pr.is_admin;}
         toast("Permisos actualizados");render();};
@@ -899,6 +1105,16 @@ function adminUsuarios(){
     });
   });
   return box;
+}
+async function addNotiTo(userId,text){try{await sb.from("notifications").insert({user_id:userId,text});}catch(_){}}
+function giveStickerModal(pr,inv){
+  const bg=el(`<div class="modal-bg"></div>`);
+  const m=el(`<div class="modal"><h3>Dar figurita a ${pr.username}</h3><label class="fld">Elegí la figurita</label><select id="gsk">${G.stickers.slice().sort(albumOrder).map(s=>`<option value="${s.id}">#${s.num} ${s.name} · ${teamName(s.team)}</option>`).join("")}</select><div class="sp"></div><label class="fld">Cantidad</label><input id="gsq" type="number" value="1"><div class="sp"></div><button class="btn gold" id="gsok">Dar</button><button class="btn ghost" id="gsc">Cancelar</button></div>`);
+  m.querySelector("#gsok").onclick=async()=>{const sid=$("#gsk").value,qty=Math.max(1,parseInt($("#gsq").value)||1);const ninv=Object.assign({},inv);ninv[sid]=(ninv[sid]||0)+qty;await sb.from("profiles").update({inventory:ninv}).eq("id",pr.id);
+    if(SESSION&&pr.id===SESSION.user.id){clearTimeout(saveTimer);G.users[CUR].inventory=ninv;}
+    const s=G.stickers.find(x=>x.id===sid);await addNotiTo(pr.id,`Te regalaron la figurita #${s?s.num:''} ${s?s.name:''}`);
+    bg.remove();toast("Figurita dada");render();};
+  m.querySelector("#gsc").onclick=()=>bg.remove();bg.appendChild(m);document.body.appendChild(bg);
 }
 /* ===================================================================
    CAPA DE BACKEND (Supabase)
@@ -938,7 +1154,7 @@ async function loadGlobal(){
   G.teams = (tm.data||[]).map(t=>({id:t.id,name:t.name,crest:t.crest,bg:t.bg}));
   G.codes = (cd.data||[]).map(c=>({code:c.code,type:c.type,amount:c.amount}));
   G.retos = (rt.data||[]).map(r=>({id:r.id,week:r.week,title:r.title,desc:r.descr,reward:r.reward}));
-  tradeOffers = (tr.data||[]).map(o=>({id:o.id,from:o.from_name,fromUser:o.from_user,give:o.give_id,want:o.want_id}));
+  tradeOffers = (tr.data||[]).map(o=>({id:o.id,from:o.from_name,fromUser:o.from_user,give:o.give_id,giveIds:o.give_ids,want:o.want_id}));
 }
 
 // --- cargar perfil del usuario logueado (lo crea si no existe) ---
@@ -957,6 +1173,8 @@ async function loadProfile(){
   isAdmin=!!data.is_admin;
   CUR=data.username||"usuario";
   G.users={}; G.users[CUR]={username:CUR,inventory:data.inventory||{},pasted:data.pasted||{},packs:data.packs||[],lastDaily:Number(data.last_daily)||0,codesUsed:data.codes_used||[],opened:data.opened||0,trades:data.trades_made||0};
+  try{await loadNotifications();}catch(_){}
+  try{await loadSuggestions();}catch(_){}
 }
 
 // --- guardar progreso del usuario (con debounce) ---
