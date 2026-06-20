@@ -313,6 +313,8 @@ body.mode-mobile .book-area{padding:0 4px}
 /* botón de páginas más grande en celular */
 body.mode-mobile .album-bottom .btn{font-size:14px;padding:12px 16px}
 body.mode-mobile .album-ctrls .arrow{width:52px;height:52px;font-size:26px}
+.give-chip.must{border-color:#4aa3ff;color:#9ecbff}
+.give-chip.always{border-color:#ffcf3a;color:#ffe27a}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -335,6 +337,7 @@ function rarColor(key){const d=rarDef(key);return d?d.color:"#7c8aa0";}
 function rarGlows(key){const d=rarDef(key);return !!(d&&d.glow);}
 function rarGlowColor(key){const d=rarDef(key);return (d&&d.glowColor)||"#ffffff";}
 function rarIsExtra(key){const d=rarDef(key);return !!(d&&d.isExtra);}
+function rarNoCommon(key){const d=rarDef(key);return !!(d&&d.noCommon);}
 // compatibilidad con código viejo
 const RAR=new Proxy({},{get:(_,k)=>({label:rarLabel(k),cls:""})});
 function RAR_KEYS_fn(){return rarities().map(r=>r.key);}
@@ -877,7 +880,7 @@ function renderPacks(screen){
 // peso de aparición por rareza (mayor = más común)
 function rarWeight(key){const d=rarDef(key);return (d&&typeof d.weight==="number")?d.weight:50;}
 // figuritas elegibles para un sobre dado (respeta inPack y rarezas no-extra)
-function packPool(){return G.stickers.filter(s=>s.inPack!==false && !rarIsExtra(s.rarity));}
+function packPool(){return G.stickers.filter(s=>s.inPack!==false && !rarIsExtra(s.rarity) && !rarNoCommon(s.rarity));}
 function extraPool(){return G.stickers.filter(s=>s.inPack!==false && rarIsExtra(s.rarity));}
 function weightedPick(list){
   if(!list.length)return null;
@@ -908,16 +911,22 @@ function openPack(pid){
   }else{
     pool=packPool();
   }
+  // las "puede salir" se suman al pool (más chance, sin garantía)
+  if(special && special.mustMaybe && special.mustMaybe.length){
+    special.mustMaybe.forEach(id=>{const s=G.stickers.find(x=>x.id===id);if(s&&!pool.includes(s))pool=pool.concat([s]);});
+  }
   const count=special&&special.count?special.count:packCount();
   const drops=[],wasNew=[];
   const addDrop=(s)=>{if(!s)return;wasNew.push(!(u.inventory[s.id]>0)&&!u.pasted[s.id]);u.inventory[s.id]=(u.inventory[s.id]||0)+1;drops.push(s);};
-  // figuritas obligatorias del sobre especial
+  // figuritas garantizadas del sobre especial
   let forced=[];
   if(special){
-    // las "sí o sí" van todas (hasta llenar el sobre)
+    // nivel 3 "sí o sí": van todas
     (special.mustAlways||[]).forEach(id=>{const s=G.stickers.find(x=>x.id===id);if(s)forced.push(s);});
-    // de las "puede", se garantiza UNA al azar
-    if(special.mustMaybe&&special.mustMaybe.length){const id=special.mustMaybe[Math.floor(Math.random()*special.mustMaybe.length)];const s=G.stickers.find(x=>x.id===id);if(s)forced.push(s);}
+    // nivel 2 "garantizada (grupo)": se eligen N al azar del grupo
+    const group=(special.mustGroup||[]).slice();
+    let n=(typeof special.guaranteedN==="number")?special.guaranteedN:1;
+    while(n>0 && group.length){const idx=Math.floor(Math.random()*group.length);const id=group.splice(idx,1)[0];const s=G.stickers.find(x=>x.id===id);if(s)forced.push(s);n--;}
   }
   forced=forced.slice(0,count); // no más que el tamaño del sobre
   forced.forEach(addDrop);
@@ -1124,18 +1133,20 @@ function adminRarezas(){
       <div class="sp"></div>
       <div class="toggle ${r.glow?'on':''} rg"><div class="tk"></div><div class="tl">Tiene brillo</div></div>
       <div class="toggle ${r.isExtra?'on':''} rx"><div class="tk"></div><div class="tl">Es "extra" (sale como adicional del sobre, único)</div></div>
+      <div class="toggle ${r.noCommon?'on':''} rnc"><div class="tk"></div><div class="tl">NO sale en sobre común (solo en especiales si la elegís)</div></div>
       <div class="sp"></div>
       <div class="row"><button class="btn gold sm rsave" style="flex:1">Guardar</button>${rs.length>1?`<button class="btn danger sm rdel">✕</button>`:''}</div>
       <div style="font-size:10px;color:var(--muted);margin-top:6px">clave interna: ${r.key}</div></div>`);
-    let glow=!!r.glow, isExtra=!!r.isExtra;
+    let glow=!!r.glow, isExtra=!!r.isExtra, noCommon=!!r.noCommon;
     card.querySelector(".rg").onclick=function(){glow=!glow;this.classList.toggle("on",glow);};
     card.querySelector(".rx").onclick=function(){isExtra=!isExtra;this.classList.toggle("on",isExtra);};
+    card.querySelector(".rnc").onclick=function(){noCommon=!noCommon;this.classList.toggle("on",noCommon);};
     card.querySelector(".rsave").onclick=async()=>{
       r.label=card.querySelector(".rn").value.trim()||r.label;
       r.weight=Math.max(0,parseInt(card.querySelector(".rw").value)||0);
       r.color=card.querySelector(".rc").value;
       r.glowColor=card.querySelector(".rgc").value;
-      r.glow=glow;r.isExtra=isExtra;
+      r.glow=glow;r.isExtra=isExtra;r.noCommon=noCommon;
       await saveConfig();toast("Rareza guardada");render();};
     const dl=card.querySelector(".rdel");if(dl)dl.onclick=async()=>{if(!confirm("¿Borrar esta rareza? Las figuritas que la usen quedarán como común."))return;G.config.rarities.splice(i,1);await saveConfig();render();};
     box.appendChild(card);
@@ -1174,22 +1185,30 @@ function adminSobres(){
   box.appendChild(el(`<p class="hero-line">Sobres especiales</p>`));
   const sps=G.config.specialPacks||[];
   const addSp=el(`<div class="panel"><h3>Crear sobre especial</h3><label class="fld">Nombre</label><input id="spn" placeholder="Ej: Sobre dorado"><div class="sp"></div><label class="fld">Figuritas por sobre</label><input id="spc" type="number" value="5"><div class="sp"></div><div class="toggle on" id="spall"><div class="tk"></div><div class="tl">Trae cualquier figurita (si lo apagás, elegís cuáles)</div></div><div class="sp"></div><div id="spsel" style="display:none"></div>
-    <label class="fld">Figuritas obligatorias (tocá: 1 vez = puede salir garantizada · 2 = sale SÍ O SÍ · 3 = quitar)</label><div id="spmust" class="give-pick"></div><div class="sp"></div>
+    <label class="fld">Figuritas especiales — tocá para cambiar nivel:</label>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px">1 toque = <b>puede salir</b> · 2 = <b>garantizada</b> (del grupo salen las que elijas) · 3 = <b>sí o sí</b> (sale siempre) · 4 = quitar</div>
+    <div id="spmust" class="give-pick"></div><div class="sp"></div>
+    <label class="fld">¿Cuántas "garantizadas" salen por sobre?</label><input id="spgar" type="number" value="1"><div class="sp"></div>
     <label class="fld">Imagen del sobre</label><input id="spimg" type="file" accept="image/*"><div class="sp"></div><button class="btn gold sm" id="spadd">Crear sobre especial</button></div>`);
   let spAll=true, spChosen=[];
-  const mustLevel={}; // id -> 1 (puede) | 2 (siempre)
+  const mustLevel={}; // id -> 1 (puede) | 2 (garantizada-grupo) | 3 (siempre)
   const selBox=addSp.querySelector("#spsel");
   G.stickers.slice().sort(albumOrder).forEach(s=>{const c=el(`<button class="give-chip">#${s.num} ${s.name}</button>`);c.onclick=()=>{if(spChosen.includes(s.id)){spChosen=spChosen.filter(x=>x!==s.id);c.classList.remove("on");}else{spChosen.push(s.id);c.classList.add("on");}};selBox.appendChild(c);});
-  // obligatorias con 3 niveles
+  // obligatorias con ciclo de 4 (0→1→2→3→0)
   const mustBox=addSp.querySelector("#spmust");
+  const lvTxt={1:" (puede)",2:" (garantizada)",3:" (SÍ o SÍ)"};
   G.stickers.slice().sort(albumOrder).forEach(s=>{const c=el(`<button class="give-chip">#${s.num} ${s.name}</button>`);
-    c.onclick=()=>{const cur=mustLevel[s.id]||0;const nx=(cur+1)%3;if(nx===0){delete mustLevel[s.id];c.classList.remove("on","must");c.querySelector(".lv")&&c.querySelector(".lv").remove();}else{mustLevel[s.id]=nx;c.classList.add("on");c.classList.toggle("must",nx===2);let lv=c.querySelector(".lv");if(!lv){lv=el(`<span class="lv"></span>`);c.appendChild(lv);}lv.textContent=nx===1?" (puede)":" (SÍ o SÍ)";}};
+    c.onclick=()=>{const cur=mustLevel[s.id]||0;const nx=(cur+1)%4;
+      if(nx===0){delete mustLevel[s.id];c.classList.remove("on","must","always");const lv=c.querySelector(".lv");if(lv)lv.remove();}
+      else{mustLevel[s.id]=nx;c.classList.add("on");c.classList.toggle("must",nx===2);c.classList.toggle("always",nx===3);let lv=c.querySelector(".lv");if(!lv){lv=el(`<span class="lv"></span>`);c.appendChild(lv);}lv.textContent=lvTxt[nx];}};
     mustBox.appendChild(c);});
   addSp.querySelector("#spall").onclick=function(){spAll=!spAll;this.classList.toggle("on",spAll);selBox.style.display=spAll?"none":"flex";selBox.style.flexWrap="wrap";selBox.style.gap="6px";};
   addSp.querySelector("#spadd").onclick=async()=>{const name=$("#spn").value.trim()||"Sobre especial";const count=Math.max(1,parseInt($("#spc").value)||5);const f=$("#spimg").files[0];let img=null,ratio=null;if(f){img=await uploadImage(f);ratio=uploadImage.lastRatio;}
-    const mustMaybe=Object.keys(mustLevel).filter(id=>mustLevel[id]===1);
-    const mustAlways=Object.keys(mustLevel).filter(id=>mustLevel[id]===2);
-    const sp={id:"SP"+Date.now(),name,count,img,ratio,stickerIds:spAll?null:spChosen.slice(),mustMaybe,mustAlways};
+    const mustMaybe=Object.keys(mustLevel).filter(id=>mustLevel[id]===1);   // puede salir (sin garantía)
+    const mustGroup=Object.keys(mustLevel).filter(id=>mustLevel[id]===2);   // grupo garantizado
+    const mustAlways=Object.keys(mustLevel).filter(id=>mustLevel[id]===3);  // siempre
+    const guaranteedN=Math.max(0,parseInt($("#spgar").value)||0);
+    const sp={id:"SP"+Date.now(),name,count,img,ratio,stickerIds:spAll?null:spChosen.slice(),mustMaybe,mustGroup,mustAlways,guaranteedN};
     G.config.specialPacks=(G.config.specialPacks||[]).concat([sp]);await saveConfig();toast("Sobre especial creado");render();};
   box.appendChild(addSp);
 
