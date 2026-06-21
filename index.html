@@ -615,7 +615,7 @@ function renderCodigos(screen){
   const p=el(`<div class="panel"><h3>${E("codigos_titulo")}</h3><p>${E("codigos_desc")}</p><div class="sp"></div><input id="codein" placeholder="EJ: BIENVENIDA" style="text-transform:uppercase"><div class="sp"></div><button class="btn gold" id="cb">Canjear</button><div class="err" id="ce"></div></div>`);
   p.querySelector("#cb").onclick=()=>{if(editing)return;const code=$("#codein").value.trim().toUpperCase();const c=G.codes.find(x=>x.code===code);if(!c){$("#ce").textContent="Código inválido.";return;}if(u.codesUsed.includes(code)){$("#ce").textContent="Ya usaste este código.";return;}u.codesUsed.push(code);
     if(c.type==="sobres"){for(let i=0;i<c.amount;i++)u.packs.push("PC"+Date.now()+i);toast(`+${c.amount} sobre(s)`);}
-    else if(c.type==="sobre_especial"&&c.target){for(let i=0;i<c.amount;i++)u.packs.push("PS:"+c.target);toast(`+${c.amount} sobre(s) especial(es)`);}
+    else if(c.type==="sobre_especial"&&c.target){for(let i=0;i<c.amount;i++)u.packs.push(specialPackInstance(c.target));toast(`+${c.amount} sobre(s) especial(es)`);}
     else if(c.type==="figu"&&c.target){u.inventory[c.target]=(u.inventory[c.target]||0)+c.amount;const s=G.stickers.find(x=>x.id===c.target);toast(`+${c.amount} ${s?'#'+s.num+' '+s.name:'figurita'}`);}
     else{for(let i=0;i<c.amount;i++){const s=weightedPick(packPool())||randSticker();if(s)u.inventory[s.id]=(u.inventory[s.id]||0)+1;}toast(`+${c.amount} figurita(s)`);}
     saveProfileSoon();render();};
@@ -887,7 +887,7 @@ function renderPacks(screen){
   else{const shelf=el(`<div class="pack-shelf"></div>`);u.packs.forEach(pid=>{
     // imagen y proporción: especial si corresponde, si no la común
     let img=G.config.packImg, ratio=G.config.packImgRatio, name="SOBRE", cnt=packCount();
-    if(typeof pid==="string" && pid.indexOf("PS:")===0){const sp=(G.config.specialPacks||[]).find(x=>x.id===pid.split(":")[1]);if(sp){img=sp.img||img;ratio=sp.ratio||ratio;name=sp.name||"SOBRE ESPECIAL";cnt=sp.count||cnt;}}
+    if(typeof pid==="string" && pid.indexOf("PS:")===0){const sid=pid.slice(3).split("#")[0];const sp=(G.config.specialPacks||[]).find(x=>x.id===sid);if(sp){img=sp.img||img;ratio=sp.ratio||ratio;name=sp.name||"SOBRE ESPECIAL";cnt=sp.count||cnt;}}
     const ar=(ratio&&ratio>0)?ratio:(3/4);
     const e=el(`<button class="envelope big ${img?'hasimg pure':''}" title="${name} · ${cnt} figuritas">
         <div class="env-spark s1"></div><div class="env-spark s2"></div><div class="env-spark s3"></div>
@@ -912,15 +912,20 @@ function weightedPick(list){
 // config de sobres con defaults
 function packCount(){return (G.config.packCount&&G.config.packCount>0)?G.config.packCount:5;}
 function extraChance(){return (typeof G.config.extraChance==="number")?G.config.extraChance:0.12;}
+// genera un id único para un sobre especial (mismo tipo, instancia distinta)
+function specialPackInstance(spId){return "PS:"+spId+"#"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function openPack(pid){
   const u=user();
-  // detectar tipo de sobre: los especiales tienen prefijo "PS:<idSobre>"
+  // detectar tipo de sobre: especiales tienen prefijo "PS:<idSobre>" (puede traer sufijo único "#xxxx")
   let special=null;
   if(typeof pid==="string" && pid.indexOf("PS:")===0){
-    const sid=pid.split(":")[1];
+    const rest=pid.slice(3);            // saca "PS:"
+    const sid=rest.split("#")[0];       // id del sobre, sin el sufijo único
     special=(G.config.specialPacks||[]).find(sp=>sp.id===sid)||null;
   }
-  u.packs=u.packs.filter(p=>p!==pid);
+  // quitar SOLO ese sobre (un único elemento), no todos los del mismo tipo
+  const ix=u.packs.indexOf(pid);
+  if(ix>=0)u.packs.splice(ix,1);
   u.opened=(u.opened||0)+1;
   // pool según sobre
   let pool;
@@ -1207,7 +1212,7 @@ function adminSobres(){
   sps.forEach(sp=>{const it=el(`<div class="adm-item"><div class="thumb">${sp.img?`<img src="${sp.img}">`:"✨"}</div><div class="meta"><div class="t">${sp.name}</div><div class="s">${sp.count} figus · ${sp.stickerIds?sp.stickerIds.length+" específicas":"cualquiera"}${(sp.mustAlways&&sp.mustAlways.length)?` · ${sp.mustAlways.length} fijas`:''}</div></div><button class="btn ghost sm edit">Editar</button><button class="btn ghost sm give1">Dar a uno</button><button class="btn ghost sm give">A todos</button><button class="btn danger sm del">✕</button></div>`);
     it.querySelector(".edit").onclick=()=>{const bg=el(`<div class="modal-bg"></div>`);const m=el(`<div class="modal" style="max-width:560px;max-height:85vh;overflow:auto"></div>`);m.appendChild(el(`<h3>Editar sobre especial</h3>`));m.appendChild(specialPackForm(sp,()=>bg.remove()));const cc=el(`<button class="btn ghost" style="margin-top:8px">Cerrar</button>`);cc.onclick=()=>bg.remove();m.appendChild(cc);bg.appendChild(m);document.body.appendChild(bg);};
     it.querySelector(".del").onclick=async()=>{G.config.specialPacks=(G.config.specialPacks||[]).filter(x=>x.id!==sp.id);await saveConfig();render();};
-    it.querySelector(".give").onclick=async()=>{if(!confirm(`¿Dar "${sp.name}" a TODOS los usuarios?`))return;const {data}=await sb.from("profiles").select("id,packs");for(const pr of (data||[])){const np=(pr.packs||[]).concat(["PS:"+sp.id]);await sb.from("profiles").update({packs:np}).eq("id",pr.id);await addNotiTo(pr.id,`Te regalaron un ${sp.name}`);}toast("Sobre especial repartido");if(SESSION){await loadProfile();}render();};
+    it.querySelector(".give").onclick=async()=>{if(!confirm(`¿Dar "${sp.name}" a TODOS los usuarios?`))return;const {data}=await sb.from("profiles").select("id,packs");for(const pr of (data||[])){const np=(pr.packs||[]).concat([specialPackInstance(sp.id)]);await sb.from("profiles").update({packs:np}).eq("id",pr.id);await addNotiTo(pr.id,`Te regalaron un ${sp.name}`);}toast("Sobre especial repartido");if(SESSION){await loadProfile();}render();};
     it.querySelector(".give1").onclick=()=>givePackToUser(sp);
     box.appendChild(it);});
   return box;
@@ -1256,7 +1261,7 @@ function givePackToUser(sp){
     m._users=data||[];});
   m.querySelector("#gpc").onclick=()=>bg.remove();
   m.querySelector("#gpok").onclick=async()=>{const uid=m.querySelector("#gpu").value;const qty=Math.max(1,parseInt($("#gpq").value)||1);if(!uid)return;const pr=(m._users||[]).find(x=>x.id===uid);if(!pr)return;
-    const tag=sp?("PS:"+sp.id):("PA"+Date.now());const adds=[];for(let i=0;i<qty;i++)adds.push(sp?("PS:"+sp.id):("PA"+Date.now()+i));
+    const adds=[];for(let i=0;i<qty;i++)adds.push(sp?specialPackInstance(sp.id):("PA"+Date.now()+i));
     const np=(pr.packs||[]).concat(adds);await sb.from("profiles").update({packs:np}).eq("id",uid);
     if(SESSION&&uid===SESSION.user.id){clearTimeout(saveTimer);G.users[CUR].packs=np;}
     await addNotiTo(uid,`Te regalaron ${qty} ${sp?sp.name:'sobre(s)'}`);bg.remove();toast("Sobre(s) dado(s)");render();};
