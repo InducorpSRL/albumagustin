@@ -553,7 +553,7 @@ function inspectImage(url,title){
   close.onclick=()=>bg.remove();stage.appendChild(close);
   bg.appendChild(stage);bg.onclick=(e)=>{if(e.target===bg)bg.remove();};document.body.appendChild(bg);
 }
-function inspectSticker(s){
+function inspectSticker(s,fromAlbum){
   const u=user();const q=u.inventory[s.id]||0,pasted=!!u.pasted[s.id];
   const ar=(s.ratio&&s.ratio>0)?s.ratio:0.75; // ancho/alto
   const bg=el(`<div class="modal-bg insp-bg"></div>`);
@@ -567,6 +567,25 @@ function inspectSticker(s){
   stage.appendChild(card);
   const info=el(`<div class="insp-info"><div class="t">${s.name}</div><div class="s"><span class="rar-dot" style="background:${rarColor(s.rarity)}"></span>${rarLabel(s.rarity)} · #${s.num}${q>0?` · tenés ×${q}`:""}${pasted?" · PEGADA":""}</div></div>`);
   stage.appendChild(info);
+  // botón despegar (solo si viene del álbum y está pegada)
+  if(fromAlbum && pasted){
+    const desp=el(`<button class="btn ghost" style="max-width:180px;margin:10px auto 0">Despegar del álbum</button>`);
+    desp.onclick=()=>{if(!confirm("¿Despegar esta figurita? Vuelve a tu colección como repetida."))return;
+      delete u.pasted[s.id];u.inventory[s.id]=(u.inventory[s.id]||0)+1;saveProfileSoon();bg.remove();toast("Figurita despegada");render();};
+    stage.appendChild(desp);
+  }
+  // botones desechar (solo en colección, si tenés sueltas)
+  if(!fromAlbum && q>0){
+    const drow=el(`<div class="row" style="max-width:320px;margin:10px auto 0;gap:8px"></div>`);
+    const desech=el(`<button class="btn ghost sm" style="flex:1">Desechar 1</button>`);
+    desech.onclick=()=>{u.inventory[s.id]--;if(u.inventory[s.id]<=0)delete u.inventory[s.id];saveProfileSoon();bg.remove();toast("Desechaste una");render();};
+    drow.appendChild(desech);
+    // "desechar y olvidar": deshabilitado si está pegada
+    const olv=el(`<button class="btn danger sm" style="flex:1" ${pasted?'disabled title="No podés olvidar una pegada; despegala primero"':''}>Desechar y olvidar</button>`);
+    if(!pasted)olv.onclick=()=>{if(!confirm("¿Olvidar esta figurita por completo? Volverá a aparecer como desconocida (?)."))return;delete u.inventory[s.id];saveProfileSoon();bg.remove();toast("Olvidaste la figurita");render();};
+    drow.appendChild(olv);
+    stage.appendChild(drow);
+  }
   const close=el(`<button class="btn ghost" style="max-width:180px;margin:14px auto 0">Cerrar</button>`);
   close.onclick=()=>bg.remove();stage.appendChild(close);
   bg.appendChild(stage);
@@ -645,8 +664,8 @@ function renderPageGrid(team,side){
       slot.innerHTML=`<span class="num">#${s.num}</span>`;slot.appendChild(el(`<div class="stickin">${figFace(s)}</div>`));slot.appendChild(el(`<div class="stamp"></div>`));
       toast(`¡Pegaste #${s.num} ${s.name}!`);updatePile();saveProfileSoon();
       // tras pegar, permitir inspeccionar
-      slot.style.cursor="pointer";slot.onclick=()=>inspectSticker(s);};}
-    else if(pasted){slot.style.cursor="pointer";slot.onclick=()=>{if(editing)return;inspectSticker(s);};}
+      slot.style.cursor="pointer";slot.onclick=()=>inspectSticker(s,true);};}
+    else if(pasted){slot.style.cursor="pointer";slot.onclick=()=>{if(editing)return;inspectSticker(s,true);};}
     grid.appendChild(slot);
   }
   inner.appendChild(grid);
@@ -1184,40 +1203,49 @@ function adminSobres(){
   // sobres especiales
   box.appendChild(el(`<p class="hero-line">Sobres especiales</p>`));
   const sps=G.config.specialPacks||[];
-  const addSp=el(`<div class="panel"><h3>Crear sobre especial</h3><label class="fld">Nombre</label><input id="spn" placeholder="Ej: Sobre dorado"><div class="sp"></div><label class="fld">Figuritas por sobre</label><input id="spc" type="number" value="5"><div class="sp"></div><div class="toggle on" id="spall"><div class="tk"></div><div class="tl">Trae cualquier figurita (si lo apagás, elegís cuáles)</div></div><div class="sp"></div><div id="spsel" style="display:none"></div>
-    <label class="fld">Figuritas especiales — tocá para cambiar nivel:</label>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:6px">1 toque = <b>puede salir</b> · 2 = <b>garantizada</b> (del grupo salen las que elijas) · 3 = <b>sí o sí</b> (sale siempre) · 4 = quitar</div>
-    <div id="spmust" class="give-pick"></div><div class="sp"></div>
-    <label class="fld">¿Cuántas "garantizadas" salen por sobre?</label><input id="spgar" type="number" value="1"><div class="sp"></div>
-    <label class="fld">Imagen del sobre</label><input id="spimg" type="file" accept="image/*"><div class="sp"></div><button class="btn gold sm" id="spadd">Crear sobre especial</button></div>`);
-  let spAll=true, spChosen=[];
-  const mustLevel={}; // id -> 1 (puede) | 2 (garantizada-grupo) | 3 (siempre)
-  const selBox=addSp.querySelector("#spsel");
-  G.stickers.slice().sort(albumOrder).forEach(s=>{const c=el(`<button class="give-chip">#${s.num} ${s.name}</button>`);c.onclick=()=>{if(spChosen.includes(s.id)){spChosen=spChosen.filter(x=>x!==s.id);c.classList.remove("on");}else{spChosen.push(s.id);c.classList.add("on");}};selBox.appendChild(c);});
-  // obligatorias con ciclo de 4 (0→1→2→3→0)
-  const mustBox=addSp.querySelector("#spmust");
-  const lvTxt={1:" (puede)",2:" (garantizada)",3:" (SÍ o SÍ)"};
-  G.stickers.slice().sort(albumOrder).forEach(s=>{const c=el(`<button class="give-chip">#${s.num} ${s.name}</button>`);
-    c.onclick=()=>{const cur=mustLevel[s.id]||0;const nx=(cur+1)%4;
-      if(nx===0){delete mustLevel[s.id];c.classList.remove("on","must","always");const lv=c.querySelector(".lv");if(lv)lv.remove();}
-      else{mustLevel[s.id]=nx;c.classList.add("on");c.classList.toggle("must",nx===2);c.classList.toggle("always",nx===3);let lv=c.querySelector(".lv");if(!lv){lv=el(`<span class="lv"></span>`);c.appendChild(lv);}lv.textContent=lvTxt[nx];}};
-    mustBox.appendChild(c);});
-  addSp.querySelector("#spall").onclick=function(){spAll=!spAll;this.classList.toggle("on",spAll);selBox.style.display=spAll?"none":"flex";selBox.style.flexWrap="wrap";selBox.style.gap="6px";};
-  addSp.querySelector("#spadd").onclick=async()=>{const name=$("#spn").value.trim()||"Sobre especial";const count=Math.max(1,parseInt($("#spc").value)||5);const f=$("#spimg").files[0];let img=null,ratio=null;if(f){img=await uploadImage(f);ratio=uploadImage.lastRatio;}
-    const mustMaybe=Object.keys(mustLevel).filter(id=>mustLevel[id]===1);   // puede salir (sin garantía)
-    const mustGroup=Object.keys(mustLevel).filter(id=>mustLevel[id]===2);   // grupo garantizado
-    const mustAlways=Object.keys(mustLevel).filter(id=>mustLevel[id]===3);  // siempre
-    const guaranteedN=Math.max(0,parseInt($("#spgar").value)||0);
-    const sp={id:"SP"+Date.now(),name,count,img,ratio,stickerIds:spAll?null:spChosen.slice(),mustMaybe,mustGroup,mustAlways,guaranteedN};
-    G.config.specialPacks=(G.config.specialPacks||[]).concat([sp]);await saveConfig();toast("Sobre especial creado");render();};
-  box.appendChild(addSp);
-
-  sps.forEach(sp=>{const it=el(`<div class="adm-item"><div class="thumb">${sp.img?`<img src="${sp.img}">`:"✨"}</div><div class="meta"><div class="t">${sp.name}</div><div class="s">${sp.count} figus · ${sp.stickerIds?sp.stickerIds.length+" específicas":"cualquiera"}${(sp.mustAlways&&sp.mustAlways.length)?` · ${sp.mustAlways.length} fijas`:''}</div></div><button class="btn ghost sm give1">Dar a uno</button><button class="btn ghost sm give">A todos</button><button class="btn danger sm del">✕</button></div>`);
+  box.appendChild(specialPackForm(null));
+  sps.forEach(sp=>{const it=el(`<div class="adm-item"><div class="thumb">${sp.img?`<img src="${sp.img}">`:"✨"}</div><div class="meta"><div class="t">${sp.name}</div><div class="s">${sp.count} figus · ${sp.stickerIds?sp.stickerIds.length+" específicas":"cualquiera"}${(sp.mustAlways&&sp.mustAlways.length)?` · ${sp.mustAlways.length} fijas`:''}</div></div><button class="btn ghost sm edit">Editar</button><button class="btn ghost sm give1">Dar a uno</button><button class="btn ghost sm give">A todos</button><button class="btn danger sm del">✕</button></div>`);
+    it.querySelector(".edit").onclick=()=>{const bg=el(`<div class="modal-bg"></div>`);const m=el(`<div class="modal" style="max-width:560px;max-height:85vh;overflow:auto"></div>`);m.appendChild(el(`<h3>Editar sobre especial</h3>`));m.appendChild(specialPackForm(sp,()=>bg.remove()));const cc=el(`<button class="btn ghost" style="margin-top:8px">Cerrar</button>`);cc.onclick=()=>bg.remove();m.appendChild(cc);bg.appendChild(m);document.body.appendChild(bg);};
     it.querySelector(".del").onclick=async()=>{G.config.specialPacks=(G.config.specialPacks||[]).filter(x=>x.id!==sp.id);await saveConfig();render();};
     it.querySelector(".give").onclick=async()=>{if(!confirm(`¿Dar "${sp.name}" a TODOS los usuarios?`))return;const {data}=await sb.from("profiles").select("id,packs");for(const pr of (data||[])){const np=(pr.packs||[]).concat(["PS:"+sp.id]);await sb.from("profiles").update({packs:np}).eq("id",pr.id);await addNotiTo(pr.id,`Te regalaron un ${sp.name}`);}toast("Sobre especial repartido");if(SESSION){await loadProfile();}render();};
     it.querySelector(".give1").onclick=()=>givePackToUser(sp);
     box.appendChild(it);});
   return box;
+}
+// formulario reutilizable para crear o editar un sobre especial
+function specialPackForm(existing, onDone){
+  const ex=existing||{};
+  const panel=el(`<div class="panel"><h3>${existing?'Editar':'Crear'} sobre especial</h3><label class="fld">Nombre</label><input id="spn" value="${ex.name||''}" placeholder="Ej: Sobre dorado"><div class="sp"></div><label class="fld">Figuritas por sobre</label><input id="spc" type="number" value="${ex.count||5}"><div class="sp"></div><div class="toggle ${ex.stickerIds?'':'on'}" id="spall"><div class="tk"></div><div class="tl">Trae cualquier figurita (si lo apagás, elegís cuáles)</div></div><div class="sp"></div><div id="spsel" style="${ex.stickerIds?'display:flex;flex-wrap:wrap;gap:6px':'display:none'}"></div>
+    <label class="fld">Figuritas especiales — tocá para cambiar nivel:</label>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px">1 = <b>puede salir</b> · 2 = <b>garantizada</b> (grupo) · 3 = <b>sí o sí</b> · 4 = quitar</div>
+    <div id="spmust" class="give-pick"></div><div class="sp"></div>
+    <label class="fld">¿Cuántas "garantizadas" salen por sobre?</label><input id="spgar" type="number" value="${ex.guaranteedN!=null?ex.guaranteedN:1}"><div class="sp"></div>
+    <label class="fld">Imagen del sobre ${ex.img?'(ya tiene una; subí otra para cambiarla)':''}</label><input id="spimg" type="file" accept="image/*"><div class="sp"></div><button class="btn gold sm" id="spadd">${existing?'Guardar cambios':'Crear sobre especial'}</button></div>`);
+  let spAll=!ex.stickerIds, spChosen=(ex.stickerIds||[]).slice();
+  const mustLevel={};
+  (ex.mustMaybe||[]).forEach(id=>mustLevel[id]=1);
+  (ex.mustGroup||[]).forEach(id=>mustLevel[id]=2);
+  (ex.mustAlways||[]).forEach(id=>mustLevel[id]=3);
+  const selBox=panel.querySelector("#spsel");
+  G.stickers.slice().sort(albumOrder).forEach(s=>{const on=spChosen.includes(s.id);const c=el(`<button class="give-chip ${on?'on':''}">#${s.num} ${s.name}</button>`);c.onclick=()=>{if(spChosen.includes(s.id)){spChosen=spChosen.filter(x=>x!==s.id);c.classList.remove("on");}else{spChosen.push(s.id);c.classList.add("on");}};selBox.appendChild(c);});
+  const mustBox=panel.querySelector("#spmust");
+  const lvTxt={1:" (puede)",2:" (garantizada)",3:" (SÍ o SÍ)"};
+  G.stickers.slice().sort(albumOrder).forEach(s=>{const lvl=mustLevel[s.id]||0;const c=el(`<button class="give-chip ${lvl?'on':''} ${lvl===2?'must':''} ${lvl===3?'always':''}">#${s.num} ${s.name}${lvl?`<span class="lv">${lvTxt[lvl]}</span>`:''}</button>`);
+    c.onclick=()=>{const cur=mustLevel[s.id]||0;const nx=(cur+1)%4;
+      if(nx===0){delete mustLevel[s.id];c.classList.remove("on","must","always");const lv=c.querySelector(".lv");if(lv)lv.remove();}
+      else{mustLevel[s.id]=nx;c.classList.add("on");c.classList.toggle("must",nx===2);c.classList.toggle("always",nx===3);let lv=c.querySelector(".lv");if(!lv){lv=el(`<span class="lv"></span>`);c.appendChild(lv);}lv.textContent=lvTxt[nx];}};
+    mustBox.appendChild(c);});
+  panel.querySelector("#spall").onclick=function(){spAll=!spAll;this.classList.toggle("on",spAll);selBox.style.display=spAll?"none":"flex";selBox.style.flexWrap="wrap";selBox.style.gap="6px";};
+  panel.querySelector("#spadd").onclick=async()=>{const name=panel.querySelector("#spn").value.trim()||"Sobre especial";const count=Math.max(1,parseInt(panel.querySelector("#spc").value)||5);const f=panel.querySelector("#spimg").files[0];let img=ex.img||null,ratio=ex.ratio||null;if(f){img=await uploadImage(f);ratio=uploadImage.lastRatio;}
+    const mustMaybe=Object.keys(mustLevel).filter(id=>mustLevel[id]===1);
+    const mustGroup=Object.keys(mustLevel).filter(id=>mustLevel[id]===2);
+    const mustAlways=Object.keys(mustLevel).filter(id=>mustLevel[id]===3);
+    const guaranteedN=Math.max(0,parseInt(panel.querySelector("#spgar").value)||0);
+    const data={name,count,img,ratio,stickerIds:spAll?null:spChosen.slice(),mustMaybe,mustGroup,mustAlways,guaranteedN};
+    if(existing){Object.assign(existing,data);}
+    else{data.id="SP"+Date.now();G.config.specialPacks=(G.config.specialPacks||[]).concat([data]);}
+    await saveConfig();toast(existing?"Sobre actualizado":"Sobre especial creado");if(onDone)onDone();render();};
+  return panel;
 }
 // elegir a quién darle un sobre (especial o común)
 function givePackToUser(sp){
@@ -1293,11 +1321,13 @@ function adminUsuarios(){
     data.forEach(pr=>{
       const inv=pr.inventory||{},packs=pr.packs||[],pasted=pr.pasted||{};
       const q=Object.values(inv).reduce((a,b)=>a+b,0);
-      const it=el(`<div class="adm-item"><div class="thumb">👤</div><div class="meta"><div class="t">${pr.username||"(sin nombre)"} ${pr.is_admin?'· ADMIN':''}</div><div class="s">${q} sueltas · ${packs.length} sobres · ${Object.keys(pasted).length} pegadas</div></div><button class="btn gold sm give">+ Sobre</button><button class="btn ghost sm fig">+ Figurita</button><button class="btn ghost sm ren">Renombrar</button><button class="btn ghost sm adm">${pr.is_admin?'Quitar admin':'Hacer admin'}</button><button class="btn ghost sm rst">Reset</button><button class="btn danger sm del">✕</button></div>`);
+      const it=el(`<div class="adm-item" style="flex-wrap:wrap"><div class="thumb">👤</div><div class="meta"><div class="t">${pr.username||"(sin nombre)"} ${pr.is_admin?'· ADMIN':''}</div><div class="s">${q} sueltas · ${packs.length} sobres · ${Object.keys(pasted).length} pegadas</div></div><button class="btn gold sm give">+ Sobre</button><button class="btn ghost sm fig">+ Figu</button><button class="btn ghost sm qpack">− Sobre</button><button class="btn ghost sm qfig">− Figu</button><button class="btn ghost sm ren">Renombrar</button><button class="btn ghost sm adm">${pr.is_admin?'Quitar admin':'Hacer admin'}</button><button class="btn ghost sm rst">Reset</button><button class="btn danger sm del">✕</button></div>`);
       it.querySelector(".give").onclick=async()=>{const np=packs.concat(["PA"+Date.now()]);await sb.from("profiles").update({packs:np}).eq("id",pr.id);
         if(SESSION&&pr.id===SESSION.user.id){clearTimeout(saveTimer);G.users[CUR].packs=np;}
         await addNotiTo(pr.id,"Te regalaron un sobre");toast("Sobre dado");render();};
       it.querySelector(".fig").onclick=()=>giveStickerModal(pr,inv);
+      it.querySelector(".qpack").onclick=async()=>{if(!packs.length){toast("No tiene sobres");return;}const np=packs.slice(0,-1);await sb.from("profiles").update({packs:np}).eq("id",pr.id);if(SESSION&&pr.id===SESSION.user.id){clearTimeout(saveTimer);G.users[CUR].packs=np;}toast("Sobre quitado");render();};
+      it.querySelector(".qfig").onclick=()=>removeStickerModal(pr,inv);
       it.querySelector(".ren").onclick=async()=>{const nn=prompt("Nuevo nombre de usuario para "+pr.username,pr.username);if(!nn||!nn.trim())return;await sb.from("profiles").update({username:nn.trim()}).eq("id",pr.id);if(SESSION&&pr.id===SESSION.user.id)CUR=nn.trim();toast("Nombre cambiado");render();};
       it.querySelector(".adm").onclick=async()=>{await sb.from("profiles").update({is_admin:!pr.is_admin}).eq("id",pr.id);
         if(SESSION&&pr.id===SESSION.user.id){isAdmin=!pr.is_admin;}
@@ -1312,6 +1342,17 @@ function adminUsuarios(){
   return box;
 }
 async function addNotiTo(userId,text){try{await sb.from("notifications").insert({user_id:userId,text});}catch(_){}}
+function removeStickerModal(pr,inv){
+  const owned=Object.keys(inv).filter(id=>inv[id]>0);
+  const bg=el(`<div class="modal-bg"></div>`);
+  if(!owned.length){const m0=el(`<div class="modal"><h3>${pr.username}</h3><p>No tiene figuritas sueltas para quitar.</p><button class="btn ghost" id="x">Cerrar</button></div>`);m0.querySelector("#x").onclick=()=>bg.remove();bg.appendChild(m0);document.body.appendChild(bg);return;}
+  const opts=owned.map(id=>{const s=G.stickers.find(x=>x.id===id);return `<option value="${id}">#${s?s.num:'?'} ${s?s.name:id} (×${inv[id]})</option>`;}).join("");
+  const m=el(`<div class="modal"><h3>Quitar figurita a ${pr.username}</h3><label class="fld">Figurita</label><select id="rsk">${opts}</select><div class="sp"></div><label class="fld">Cantidad a quitar</label><input id="rsq" type="number" value="1"><div class="sp"></div><button class="btn danger" id="rsok">Quitar</button><button class="btn ghost" id="rsc">Cancelar</button></div>`);
+  m.querySelector("#rsok").onclick=async()=>{const sid=m.querySelector("#rsk").value,qty=Math.max(1,parseInt($("#rsq").value)||1);const ninv=Object.assign({},inv);ninv[sid]=(ninv[sid]||0)-qty;if(ninv[sid]<=0)delete ninv[sid];await sb.from("profiles").update({inventory:ninv}).eq("id",pr.id);
+    if(SESSION&&pr.id===SESSION.user.id){clearTimeout(saveTimer);G.users[CUR].inventory=ninv;}
+    bg.remove();toast("Figurita quitada");render();};
+  m.querySelector("#rsc").onclick=()=>bg.remove();bg.appendChild(m);document.body.appendChild(bg);
+}
 function giveStickerModal(pr,inv){
   const bg=el(`<div class="modal-bg"></div>`);
   const m=el(`<div class="modal"><h3>Dar figurita a ${pr.username}</h3><label class="fld">Elegí la figurita</label><select id="gsk">${G.stickers.slice().sort(albumOrder).map(s=>`<option value="${s.id}">#${s.num} ${s.name} · ${teamName(s.team)}</option>`).join("")}</select><div class="sp"></div><label class="fld">Cantidad</label><input id="gsq" type="number" value="1"><div class="sp"></div><button class="btn gold" id="gsok">Dar</button><button class="btn ghost" id="gsc">Cancelar</button></div>`);
