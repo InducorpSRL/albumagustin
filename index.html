@@ -927,43 +927,45 @@ function openPack(pid){
   const ix=u.packs.indexOf(pid);
   if(ix>=0)u.packs.splice(ix,1);
   u.opened=(u.opened||0)+1;
-  // pool según sobre
-  let pool;
-  if(special && special.stickerIds && special.stickerIds.length){
-    pool=G.stickers.filter(s=>special.stickerIds.includes(s.id) && !rarIsExtra(s.rarity));
-    if(!pool.length)pool=packPool();
-  }else{
-    pool=packPool();
-  }
-  // las "puede salir" se suman al pool (más chance, sin garantía)
-  if(special && special.mustMaybe && special.mustMaybe.length){
-    special.mustMaybe.forEach(id=>{const s=G.stickers.find(x=>x.id===id);if(s&&!pool.includes(s))pool=pool.concat([s]);});
-  }
   const count=special&&special.count?special.count:packCount();
   const drops=[],wasNew=[];
   const addDrop=(s)=>{if(!s)return;wasNew.push(!(u.inventory[s.id]>0)&&!u.pasted[s.id]);u.inventory[s.id]=(u.inventory[s.id]||0)+1;drops.push(s);};
-  // figuritas garantizadas del sobre especial
-  let forced=[];
+  const byId=(id)=>G.stickers.find(x=>x.id===id);
+
   if(special){
-    // nivel 3 "sí o sí": van todas
-    (special.mustAlways||[]).forEach(id=>{const s=G.stickers.find(x=>x.id===id);if(s)forced.push(s);});
-    // nivel 2 "garantizada (grupo)": se eligen N al azar del grupo
+    // ----- SOBRE ESPECIAL: grupos sí o sí / garantizadas / puede salir -----
+    // 1) sí o sí: TODAS, siempre (aunque pase el tamaño N)
+    (special.mustAlways||[]).forEach(id=>addDrop(byId(id)));
+    // 2) garantizadas: X al azar del grupo
     const group=(special.mustGroup||[]).slice();
     let n=(typeof special.guaranteedN==="number")?special.guaranteedN:1;
-    while(n>0 && group.length){const idx=Math.floor(Math.random()*group.length);const id=group.splice(idx,1)[0];const s=G.stickers.find(x=>x.id===id);if(s)forced.push(s);n--;}
+    while(n>0 && group.length){const idx=Math.floor(Math.random()*group.length);const id=group.splice(idx,1)[0];addDrop(byId(id));n--;}
+    // 3) puede salir: rellena los espacios que falten hasta N, repitiendo si hace falta
+    let maybe=(special.mustMaybe||[]).map(byId).filter(Boolean);
+    // si no se definió "puede salir", usar las stickerIds del sobre, o el pool general
+    if(!maybe.length){
+      if(special.stickerIds&&special.stickerIds.length)maybe=special.stickerIds.map(byId).filter(s=>s&&!rarIsExtra(s.rarity));
+      else maybe=packPool();
+    }
+    while(drops.length<count && maybe.length){const s=weightedPick(maybe)||maybe[0];addDrop(s);}
+  }else{
+    // ----- SOBRE COMÚN: pool con lista de permitidas opcional -----
+    let pool=packPool();
+    if(G.config.commonAllow&&G.config.commonAllow.length){
+      pool=pool.filter(s=>G.config.commonAllow.includes(s.id));
+      if(!pool.length)pool=packPool();
+    }
+    for(let i=0;i<count;i++){const s=weightedPick(pool)||G.stickers[0];if(!s)break;addDrop(s);}
   }
-  forced=forced.slice(0,count); // no más que el tamaño del sobre
-  forced.forEach(addDrop);
-  for(let i=drops.length;i<count;i++){
-    const s=weightedPick(pool)||G.stickers[0];
-    if(!s)break;
-    addDrop(s);
-  }
-  // posible EXTRA como figurita adicional (probabilidad baja, máximo uno)
-  const ex=extraPool();
-  if(ex.length && Math.random()<extraChance()){
-    const s=weightedPick(ex);
-    if(s){wasNew.push(!(u.inventory[s.id]>0)&&!u.pasted[s.id]);u.inventory[s.id]=(u.inventory[s.id]||0)+1;drops.push(s);}
+
+  // posible EXTRA como figurita adicional (según config del sobre o global)
+  const extraOn = special ? (special.extra!==false) : true;
+  if(extraOn){
+    const ex=extraPool();
+    if(ex.length && Math.random()<extraChance()){
+      const s=weightedPick(ex);
+      if(s){wasNew.push(!(u.inventory[s.id]>0)&&!u.pasted[s.id]);u.inventory[s.id]=(u.inventory[s.id]||0)+1;drops.push(s);}
+    }
   }
   saveProfileSoon();
   const flash=el(`<div class="pack-flash"></div>`);document.body.appendChild(flash);
@@ -1205,6 +1207,21 @@ function adminSobres(){
     await saveConfig();toast("Ajustes guardados");render();};
   box.appendChild(cfg);
 
+  // qué figuritas pueden salir en el sobre común
+  const allow=(G.config.commonAllow||[]).slice();
+  const cap=el(`<div class="panel"><h3>Figuritas del sobre común</h3><p>Por defecto pueden salir todas (según rareza y "aparece en sobres"). Si elegís algunas acá, el sobre común SOLO entregará esas. Tocá para incluir/excluir.</p><div class="sp"></div><div class="row" style="gap:8px"><button class="btn ghost sm" id="callall" style="flex:1">Todas</button><button class="btn ghost sm" id="callnone" style="flex:1">Ninguna (solo elegidas)</button></div><div class="sp"></div><div id="callpick" class="give-pick"></div><div class="sp"></div><button class="btn gold sm" id="callsave">Guardar</button></div>`);
+  let chosen=allow.slice();
+  const pickBox=cap.querySelector("#callpick");
+  const renderPick=()=>{pickBox.innerHTML="";G.stickers.slice().sort(albumOrder).forEach(s=>{const on=chosen.includes(s.id);const c=el(`<button class="give-chip ${on?'on':''}">#${s.num} ${s.name}</button>`);c.onclick=()=>{if(chosen.includes(s.id))chosen=chosen.filter(x=>x!==s.id);else chosen.push(s.id);c.classList.toggle("on");};pickBox.appendChild(c);});};
+  renderPick();
+  cap.querySelector("#callall").onclick=()=>{chosen=[];renderPick();toast("Quedó: todas pueden salir");};
+  cap.querySelector("#callnone").onclick=()=>{chosen=G.stickers.map(s=>s.id);renderPick();};
+  cap.querySelector("#callsave").onclick=async()=>{
+    // si están todas elegidas o ninguna, lo tratamos como "todas" (lista vacía)
+    G.config.commonAllow=(chosen.length===0||chosen.length===G.stickers.length)?[]:chosen.slice();
+    await saveConfig();toast("Guardado");};
+  box.appendChild(cap);
+
   // sobres especiales
   box.appendChild(el(`<p class="hero-line">Sobres especiales</p>`));
   const sps=G.config.specialPacks||[];
@@ -1220,19 +1237,19 @@ function adminSobres(){
 // formulario reutilizable para crear o editar un sobre especial
 function specialPackForm(existing, onDone){
   const ex=existing||{};
-  const panel=el(`<div class="panel"><h3>${existing?'Editar':'Crear'} sobre especial</h3><label class="fld">Nombre</label><input id="spn" value="${ex.name||''}" placeholder="Ej: Sobre dorado"><div class="sp"></div><label class="fld">Figuritas por sobre</label><input id="spc" type="number" value="${ex.count||5}"><div class="sp"></div><div class="toggle ${ex.stickerIds?'':'on'}" id="spall"><div class="tk"></div><div class="tl">Trae cualquier figurita (si lo apagás, elegís cuáles)</div></div><div class="sp"></div><div id="spsel" style="${ex.stickerIds?'display:flex;flex-wrap:wrap;gap:6px':'display:none'}"></div>
-    <label class="fld">Figuritas especiales — tocá para cambiar nivel:</label>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:6px">1 = <b>puede salir</b> · 2 = <b>garantizada</b> (grupo) · 3 = <b>sí o sí</b> · 4 = quitar</div>
+  const panel=el(`<div class="panel"><h3>${existing?'Editar':'Crear'} sobre especial</h3><label class="fld">Nombre</label><input id="spn" value="${ex.name||''}" placeholder="Ej: Sobre dorado"><div class="sp"></div><label class="fld">Figuritas por sobre</label><input id="spc" type="number" value="${ex.count||5}"><div class="sp"></div>
+    <div class="toggle ${ex.extra!==false?'on':''}" id="spextra"><div class="tk"></div><div class="tl">Puede traer un Extra sticker (probabilidad global)</div></div><div class="sp"></div>
+    <label class="fld">Figuritas — tocá para cambiar nivel:</label>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px">0 = <b>no sale</b> · 1 = <b>puede salir</b> (rellena) · 2 = <b>garantizada</b> (grupo) · 3 = <b>sí o sí</b> · 4 = vuelve a 0</div>
     <div id="spmust" class="give-pick"></div><div class="sp"></div>
-    <label class="fld">¿Cuántas "garantizadas" salen por sobre?</label><input id="spgar" type="number" value="${ex.guaranteedN!=null?ex.guaranteedN:1}"><div class="sp"></div>
+    <label class="fld">¿Cuántas del grupo "garantizadas" salen por sobre?</label><input id="spgar" type="number" value="${ex.guaranteedN!=null?ex.guaranteedN:1}"><div class="sp"></div>
     <label class="fld">Imagen del sobre ${ex.img?'(ya tiene una; subí otra para cambiarla)':''}</label><input id="spimg" type="file" accept="image/*"><div class="sp"></div><button class="btn gold sm" id="spadd">${existing?'Guardar cambios':'Crear sobre especial'}</button></div>`);
-  let spAll=!ex.stickerIds, spChosen=(ex.stickerIds||[]).slice();
   const mustLevel={};
   (ex.mustMaybe||[]).forEach(id=>mustLevel[id]=1);
   (ex.mustGroup||[]).forEach(id=>mustLevel[id]=2);
   (ex.mustAlways||[]).forEach(id=>mustLevel[id]=3);
-  const selBox=panel.querySelector("#spsel");
-  G.stickers.slice().sort(albumOrder).forEach(s=>{const on=spChosen.includes(s.id);const c=el(`<button class="give-chip ${on?'on':''}">#${s.num} ${s.name}</button>`);c.onclick=()=>{if(spChosen.includes(s.id)){spChosen=spChosen.filter(x=>x!==s.id);c.classList.remove("on");}else{spChosen.push(s.id);c.classList.add("on");}};selBox.appendChild(c);});
+  let extraOn=ex.extra!==false;
+  panel.querySelector("#spextra").onclick=function(){extraOn=!extraOn;this.classList.toggle("on",extraOn);};
   const mustBox=panel.querySelector("#spmust");
   const lvTxt={1:" (puede)",2:" (garantizada)",3:" (SÍ o SÍ)"};
   G.stickers.slice().sort(albumOrder).forEach(s=>{const lvl=mustLevel[s.id]||0;const c=el(`<button class="give-chip ${lvl?'on':''} ${lvl===2?'must':''} ${lvl===3?'always':''}">#${s.num} ${s.name}${lvl?`<span class="lv">${lvTxt[lvl]}</span>`:''}</button>`);
@@ -1240,14 +1257,13 @@ function specialPackForm(existing, onDone){
       if(nx===0){delete mustLevel[s.id];c.classList.remove("on","must","always");const lv=c.querySelector(".lv");if(lv)lv.remove();}
       else{mustLevel[s.id]=nx;c.classList.add("on");c.classList.toggle("must",nx===2);c.classList.toggle("always",nx===3);let lv=c.querySelector(".lv");if(!lv){lv=el(`<span class="lv"></span>`);c.appendChild(lv);}lv.textContent=lvTxt[nx];}};
     mustBox.appendChild(c);});
-  panel.querySelector("#spall").onclick=function(){spAll=!spAll;this.classList.toggle("on",spAll);selBox.style.display=spAll?"none":"flex";selBox.style.flexWrap="wrap";selBox.style.gap="6px";};
   panel.querySelector("#spadd").onclick=async()=>{const name=panel.querySelector("#spn").value.trim()||"Sobre especial";const count=Math.max(1,parseInt(panel.querySelector("#spc").value)||5);const f=panel.querySelector("#spimg").files[0];let img=ex.img||null,ratio=ex.ratio||null;if(f){img=await uploadImage(f);ratio=uploadImage.lastRatio;}
     const mustMaybe=Object.keys(mustLevel).filter(id=>mustLevel[id]===1);
     const mustGroup=Object.keys(mustLevel).filter(id=>mustLevel[id]===2);
     const mustAlways=Object.keys(mustLevel).filter(id=>mustLevel[id]===3);
     const guaranteedN=Math.max(0,parseInt(panel.querySelector("#spgar").value)||0);
-    const data={name,count,img,ratio,stickerIds:spAll?null:spChosen.slice(),mustMaybe,mustGroup,mustAlways,guaranteedN};
-    if(existing){Object.assign(existing,data);}
+    const data={name,count,img,ratio,mustMaybe,mustGroup,mustAlways,guaranteedN,extra:extraOn};
+    if(existing){Object.assign(existing,data);delete existing.stickerIds;}
     else{data.id="SP"+Date.now();G.config.specialPacks=(G.config.specialPacks||[]).concat([data]);}
     await saveConfig();toast(existing?"Sobre actualizado":"Sobre especial creado");if(onDone)onDone();render();};
   return panel;
